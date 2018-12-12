@@ -16,6 +16,7 @@ Yt = np.ravel(tar_data[:, no_features:no_features + 1])
 Yt = np.array([int(label) for label in Yt])
 
 ns, nt = Xs.shape[0], Xt.shape[0]
+n = ns+nt
 
 YY = np.zeros((ns, C))
 for c in range(1, C + 1):

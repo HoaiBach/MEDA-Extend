@@ -9,6 +9,7 @@ import scipy.io
 from sklearn import metrics
 from sklearn import svm
 from sklearn.neighbors import KNeighborsClassifier
+import FitnessFunction
 
 import GFK
 
@@ -125,8 +126,6 @@ class MEDA:
         knn_clf.fit(X[:, :ns].T, Ys.ravel())
         Cls = knn_clf.predict(X[:, ns:].T)
 
-        sigma = 1
-        self.gamma = 1/(2.0*sigma**2)
         K = kernel(self.kernel_type, X, X2=None, gamma=self.gamma)
         E = np.diagflat(np.vstack((np.ones((ns, 1)), np.zeros((nt, 1)))))
         for t in range(1, self.T + 1):
@@ -162,6 +161,8 @@ class MEDA:
             MMD = self.lamb*np.linalg.multi_dot([Beta.T, np.linalg.multi_dot([K, M, K]), Beta]).trace()
             print(SRM+MMD)
 
+            print('From Fitnessfuntion: %f' %FitnessFunction.fitness_function_test(Beta, Cls))
+
             F = np.dot(K, Beta)
             Cls = np.argmax(F, axis=1) + 1
             Cls = Cls[ns:]
@@ -184,6 +185,6 @@ if __name__ == '__main__':
     Yt = np.ravel(target[:, m:m + 1])
     Yt = np.array([int(label) for label in Yt])
 
-    meda = MEDA(kernel_type='rbf', dim=20, lamb=10, rho=1.0, eta=0.1, p=10, gamma=1, T=10)
+    meda = MEDA(kernel_type='rbf', dim=20, lamb=10, rho=1.0, eta=0.1, p=10, gamma=0.5, T=10)
     acc, ypre, list_acc = meda.fit_predict(Xs, Ys, Xt, Yt)
     print(acc)

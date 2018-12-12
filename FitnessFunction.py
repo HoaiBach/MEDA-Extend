@@ -1,6 +1,7 @@
 import numpy as np
 import Core
 
+
 def fitness_function(Beta):
     '''
     Calculate the fitness function of the matrix A
@@ -8,7 +9,7 @@ def fitness_function(Beta):
     :return:
     '''
     # estimate the new label
-    Ytest = np.copy(Core.Yt_pseu)
+    Ytest = np.copy(Core.YY)
     for c in range(1, Core.C + 1):
         yy = Core.Yt_pseu == c
         inds = np.where(yy == True)
