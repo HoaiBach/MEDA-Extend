@@ -128,11 +128,13 @@ class MEDA:
 
         K = kernel(self.kernel_type, X, X2=None, gamma=self.gamma)
         E = np.diagflat(np.vstack((np.ones((ns, 1)), np.zeros((nt, 1)))))
+
+        e = np.vstack((1.0 / ns * np.ones((ns, 1)), -1.0 / nt * np.ones((nt, 1))))
+        M0 = e * e.T * C
+
         for t in range(1, self.T + 1):
             # mu = self.estimate_mu(Xs_new.T, Ys, Xt_new.T, Cls)
             mu = 0.5
-            e = np.vstack((1.0 / ns * np.ones((ns, 1)), -1.0 / nt * np.ones((nt, 1))))
-            M = e * e.T * C
             N = 0
             for c in range(1, C + 1):
                 e = np.zeros((ns + nt, 1))
@@ -144,7 +146,7 @@ class MEDA:
                 e[tuple(inds)] = -1.0 / len(Cls[np.where(Cls == c)])
                 e[np.isinf(e)] = 0
                 N += np.dot(e, e.T)
-            M = (1 - mu) * M + mu * N
+            M = (1 - mu) * M0 + mu * N
             M /= np.linalg.norm(M, 'fro')
             left = np.dot(E + self.lamb * M + self.rho * L, K) + self.eta * np.eye(ns + nt, ns + nt)
             Beta = np.dot(np.linalg.inv(left), np.dot(E, YY))
@@ -185,6 +187,6 @@ if __name__ == '__main__':
     Yt = np.ravel(target[:, m:m + 1])
     Yt = np.array([int(label) for label in Yt])
 
-    meda = MEDA(kernel_type='rbf', dim=20, lamb=10, rho=1.0, eta=0.1, p=10, gamma=0.5, T=10)
+    meda = MEDA(kernel_type='rbf', dim=20, lamb=10, rho=1.0, eta=0.1, p=10, gamma=0.5, T=100)
     acc, ypre, list_acc = meda.fit_predict(Xs, Ys, Xt, Yt)
     print(acc)

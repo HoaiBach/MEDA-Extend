@@ -17,22 +17,21 @@ import numpy as np
 from deap import base
 from deap import creator
 from deap import tools
-from sklearn.metrics import accuracy_score as score
 import FitnessFunction
 import Core
 
 # Setting from Problem
 NBIT = (len(Core.Xs) + len(Core.Xt)) * Core.C
-NGEN = 100
-NPART = 30#NBIT if NBIT < 100 else 100
+NGEN = 1000
+NPART = 100#NBIT if NBIT < 100 else 100
 
 # PSO parameters
 w = 0.7298
 c1 = 1.49618
 c2 = 1.49618
-pos_max = 10
-pos_min = -10
-s_max = (pos_max - pos_min)/5
+pos_max = 10.0
+pos_min = -10.0
+s_max = (pos_max - pos_min)/30
 s_min = -s_max
 
 creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
@@ -42,8 +41,17 @@ creator.create("Particle", np.ndarray, fitness=creator.FitnessMin,
 
 
 def generate(size, pmin, pmax, smin, smax):
+    # create position
     position = np.random.uniform(pmin, pmax, size)
+
+    #refine the position
+    beta = np.copy(position)
+    beta = np.reshape(beta, (len(Core.Xs) + len(Core.Xt), Core.C))
+    beta = FitnessFunction.refine(beta)
+    position = np.reshape(beta, ((len(Core.Xs) + len(Core.Xt))*Core.C),)
+
     part = creator.Particle(position)
+    # create speed
     part.speed = np.zeros(size)
     part.smin = smin
     part.smax = smax
@@ -51,6 +59,7 @@ def generate(size, pmin, pmax, smin, smax):
 
 
 def updateParticle(part, best):
+    # calculate speed
     u1 = np.random.uniform(0, 1, len(part))
     u2 = np.random.uniform(0, 1, len(part))
     v_u1 = c1 * u1 * (part.best - part)
@@ -61,6 +70,8 @@ def updateParticle(part, best):
             part.speed[i] = part.smin
         elif speed > part.smax:
             part.speed[i] = part.smax
+
+    # calculate new positions
     part += part.speed
     for i, entry in enumerate(part):
         if entry < pos_min:
@@ -72,7 +83,8 @@ def updateParticle(part, best):
 def evaluate(particle):
     beta = np.copy(particle)
     beta = np.reshape(beta, (len(Core.Xs) + len(Core.Xt), Core.C))
-    return FitnessFunction.fitness_function(beta),
+    fitness = FitnessFunction.fitness_function(beta)
+    return fitness,
 
 
 toolbox = base.Toolbox()
@@ -95,9 +107,14 @@ def main(args):
 
     logbook = tools.Logbook()
     logbook.header = ["gen", "evals"] + stats.fields
+    best = None
+    glive = 0
+    gbest_try = False
 
     for g in range(NGEN):
         print('==============Gen %d===============' %g)
+
+        gbest_update = False
         for part in pop:
             part.fitness.values = toolbox.evaluate(part)
             if part.best is None or part.best.fitness < part.fitness:
@@ -108,18 +125,56 @@ def main(args):
                 best = creator.Particle(part)
                 best.fitness.values = part.fitness.values
                 best.target_predict = part.target_predict
+                gbest_update = True
+
+        if gbest_update:
+            glive = 1
+            gbest_try = False
+        else:
+            glive = glive + 1
+
         for part in pop:
             toolbox.update(part, best)
+
+        # Gather all the fitnesses in one list and print the stats
+        logbook.record(gen=g, evals=len(pop), **stats.compile(pop))
+        print(logbook.stream)
+
+        if glive > 10:
+            print('Start reparing gbest')
+
+            if gbest_try:
+                beta = np.random.uniform(pos_min, pos_max, NBIT)
+            else:
+                beta = np.copy(best)
+                gbest_try = True
+
+            beta = np.reshape(beta, (len(Core.Xs) + len(Core.Xt), Core.C))
+            beta = FitnessFunction.refine(beta)
+            position = np.reshape(beta, ((len(Core.Xs) + len(Core.Xt)) * Core.C), )
+            tmp = creator.Particle(position)
+            tmp.fitness.values = toolbox.evaluate(tmp)
+            if best.fitness < tmp.fitness:
+                print("Update gbest")
+                best = tmp
+                glive = 1
+                gbest_try = False
 
         # update the target pseudo
         beta = np.copy(best)
         beta = np.reshape(beta, (len(Core.Xs) + len(Core.Xt), Core.C))
         F = np.dot(Core.K, beta)
         Cls = np.argmax(F, axis=1) + 1
-        Cls = Cls[Core.ns:]
-        Core.Yt_pseu = Cls
-        acc = np.mean(Core.Yt_pseu == Core.Yt)
-        print(acc)
+
+        label_target = Cls[Core.ns:]
+        Core.Yt_pseu = label_target
+        acc_target = np.mean(label_target == Core.Yt)
+
+        label_source = Cls[:Core.ns]
+        acc_source = np.mean(label_source == Core.Ys)
+
+        print("Source acc: %f Target acc: %f" % (acc_source, acc_target))
+        print(best.fitness)
 
 
 if __name__ == "__main__":
