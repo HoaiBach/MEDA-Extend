@@ -58,7 +58,7 @@ def proxy_a_distance(source_X, target_X):
     return dist
 
 
-class Random_MEDA:
+class Random_Heu_MEDA:
     def __init__(self, kernel_type='primal', dim=30, lamb=1, rho=1.0, eta=0.1, p=10, gamma=1, T=10, seed=1617):
         '''
         Init func
@@ -149,7 +149,8 @@ class Random_MEDA:
         for g in range(GEN):
             print('==============Gen %d===============' % g)
             for index, ind in enumerate(pop):
-                new_position, fitness, ind_acc_s, ind_acc_t = self.fit_predict(pop[index])
+                if g==0:
+                    new_position, fitness, ind_acc_s, ind_acc_t = self.fit_predict(pop[index],)
                 print("Ind %d has fitness of %f and source accuracy %f and target accuracy %f." % (index, fitness, ind_acc_s, ind_acc_t))
                 pop[index] = new_position
                 fits[index] = fitness
@@ -160,10 +161,15 @@ class Random_MEDA:
                     best_acc_t = ind_acc_t
             print("Individual %d has best fitness of %f and source accuracy %f and target accuracy %f." % (best_index, best_fitness, best_acc_s, best_acc_t))
 
-    def fit_predict(self, Beta):
-        F = np.dot(self.K, Beta)
-        Y_pseudo = np.argmax(F, axis=1) + 1
-        Yt_pseu = Y_pseudo[self.ns:]
+    def fit_predict(self, Beta, k, X=None):
+        if k<0:
+            F = np.dot(self.K, Beta)
+            Y_pseudo = np.argmax(F, axis=1) + 1
+            Yt_pseu = Y_pseudo[self.ns:]
+        else:
+            knn_clf = KNeighborsClassifier(n_neighbors=k)
+            knn_clf.fit(X[:, :self.ns].T, self.Ys)
+            Yt_pseu = knn_clf.predict(X[:, self.ns:])
 
         mu = 0.5
         N = 0
@@ -216,5 +222,5 @@ if __name__ == '__main__':
     Yt = np.ravel(target[:, m:m + 1])
     Yt = np.array([int(label) for label in Yt])
 
-    r_meda = Random_MEDA(kernel_type='rbf', dim=20, lamb=10, rho=1.0, eta=1, p=10, gamma=0.5, T=10)
+    r_meda = Random_MEDA(kernel_type='rbf', dim=20, lamb=10, rho=1.0, eta=0.1, p=10, gamma=0.5, T=10)
     r_meda.evolve(Xs, Ys, Xt, Yt)

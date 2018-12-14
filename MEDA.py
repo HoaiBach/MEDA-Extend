@@ -143,8 +143,10 @@ class MEDA:
                 yy = Cls == c
                 ind = np.where(yy == True)
                 inds = [item + ns for item in ind]
-                e[tuple(inds)] = -1.0 / len(Cls[np.where(Cls == c)])
-                e[np.isinf(e)] = 0
+                if len(Cls[np.where(Cls == c)]) == 0:
+                    e[tuple(inds)] = 0.0
+                else:
+                    e[tuple(inds)] = -1.0 / len(Cls[np.where(Cls == c)])
                 N += np.dot(e, e.T)
             M = (1 - mu) * M0 + mu * N
             M /= np.linalg.norm(M, 'fro')
@@ -161,9 +163,8 @@ class MEDA:
             SRM = np.linalg.norm(np.dot(Ytest.T - np.dot(Beta.T, K), E)) \
                   + self.eta*np.linalg.multi_dot([Beta.T, K, Beta]).trace()
             MMD = self.lamb*np.linalg.multi_dot([Beta.T, np.linalg.multi_dot([K, M, K]), Beta]).trace()
-            print(SRM+MMD)
-
-            print('From Fitnessfuntion: %f' %FitnessFunction.fitness_function_test(Beta, Cls))
+            fitness = SRM + MMD
+            print(fitness, SRM, MMD)
 
             F = np.dot(K, Beta)
             Cls = np.argmax(F, axis=1) + 1
@@ -171,6 +172,7 @@ class MEDA:
             acc = np.mean(Cls == Yt.ravel())
             list_acc.append(acc)
             print('MEDA iteration [{}/{}]: mu={:.2f}, Acc={:.4f}'.format(t, self.T, mu, acc))
+            print('=============================================')
         return acc, Cls, list_acc
 
 
@@ -187,6 +189,6 @@ if __name__ == '__main__':
     Yt = np.ravel(target[:, m:m + 1])
     Yt = np.array([int(label) for label in Yt])
 
-    meda = MEDA(kernel_type='rbf', dim=20, lamb=10, rho=1.0, eta=0.1, p=10, gamma=0.5, T=100)
+    meda = MEDA(kernel_type='rbf', dim=20, lamb=10, rho=1.0, eta=1, p=10, gamma=0.5, T=100)
     acc, ypre, list_acc = meda.fit_predict(Xs, Ys, Xt, Yt)
     print(acc)
