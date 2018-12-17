@@ -189,6 +189,6 @@ if __name__ == '__main__':
     Yt = np.ravel(target[:, m:m + 1])
     Yt = np.array([int(label) for label in Yt])
 
-    meda = MEDA(kernel_type='rbf', dim=20, lamb=10, rho=1.0, eta=1, p=10, gamma=0.5, T=100)
+    meda = MEDA(kernel_type='rbf', dim=20, lamb=10, rho=1.0, eta=0.1, p=10, gamma=0.5, T=100)
     acc, ypre, list_acc = meda.fit_predict(Xs, Ys, Xt, Yt)
     print(acc)

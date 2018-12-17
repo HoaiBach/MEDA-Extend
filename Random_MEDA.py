@@ -160,6 +160,25 @@ class Random_MEDA:
                     best_acc_t = ind_acc_t
             print("Individual %d has best fitness of %f and source accuracy %f and target accuracy %f." % (best_index, best_fitness, best_acc_s, best_acc_t))
 
+        all_labels = []
+        for ind in pop:
+            Beta = np.copy(ind)
+            Beta = np.reshape(Beta, (self.ns+self.nt, self.C))
+            F = np.dot(self.K, Beta)
+            Y_pseudo = np.argmax(F, axis=1) + 1
+            Yt_pseu = Y_pseudo[self.ns:].tolist()
+            all_labels.append(Yt_pseu)
+        all_labels = np.array(all_labels)
+        vote_label = []
+        for ins_idx in range(all_labels.shape[1]):
+            ins_labels = all_labels[:,ins_idx]
+            counts = np.bincount(ins_labels)
+            label = np.argmax(counts)
+            vote_label.append(label)
+        acc = np.mean(vote_label == Yt)
+        print(acc)
+
+
     def fit_predict(self, Beta):
         F = np.dot(self.K, Beta)
         Y_pseudo = np.argmax(F, axis=1) + 1
@@ -216,5 +235,5 @@ if __name__ == '__main__':
     Yt = np.ravel(target[:, m:m + 1])
     Yt = np.array([int(label) for label in Yt])
 
-    r_meda = Random_MEDA(kernel_type='rbf', dim=20, lamb=10, rho=1.0, eta=1, p=10, gamma=0.5, T=10)
+    r_meda = Random_MEDA(kernel_type='rbf', dim=20, lamb=10, rho=1.0, eta=0.1, p=10, gamma=0.5, T=10)
     r_meda.evolve(Xs, Ys, Xt, Yt)
