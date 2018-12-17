@@ -142,7 +142,8 @@ class Random_MEDA:
             fits.append(sys.float_info.max)
 
         # evolution
-        best_index = -1
+        archive = []
+        best = None
         best_fitness = sys.float_info.max
         best_acc_s = -sys.float_info.max
         best_acc_t = -sys.float_info.max
@@ -151,15 +152,31 @@ class Random_MEDA:
             for index, ind in enumerate(pop):
                 new_position, fitness, ind_acc_s, ind_acc_t = self.fit_predict(pop[index])
                 print("Ind %d has fitness of %f and source accuracy %f and target accuracy %f." % (index, fitness, ind_acc_s, ind_acc_t))
+
+                # if the fitness is not improved, store the previous position in the archive
+                # randomly create a new position based on the best
+                # store the current position to archive
+                if fits[index] <= fitness:
+                    print("***Reset ind %d" % index)
+                    new_position = self.re_initialize(pop, best, pos_min, pos_max)
+                    new_position, fitness, ind_acc_s, ind_acc_t = self.fit_predict(new_position)
+                    archive.append(pop[index])
+                    print("archive size %d***" %len(archive))
+
                 pop[index] = new_position
                 fits[index] = fitness
+
+                # update best if necessary
                 if fitness < best_fitness:
-                    best_index = index
+                    best = np.copy(pop[index])
                     best_fitness = fitness
                     best_acc_s = ind_acc_s
                     best_acc_t = ind_acc_t
-            print("Individual %d has best fitness of %f and source accuracy %f and target accuracy %f." % (best_index, best_fitness, best_acc_s, best_acc_t))
 
+            print("Best fitness of %f and source accuracy %f and target accuracy %f." % (best_fitness, best_acc_s, best_acc_t))
+
+        archive.append(best)
+        print("Final archive size %d" % len(archive))
         all_labels = []
         for ind in pop:
             Beta = np.copy(ind)
@@ -178,6 +195,13 @@ class Random_MEDA:
         acc = np.mean(vote_label == Yt)
         print(acc)
 
+    def re_initialize(self, pop, best, pos_min, pos_max):
+        NBIT = best.shape[0] * best.shape[1]
+        rand_pos = np.random.uniform(pos_min, pos_max, NBIT)
+        rand_pos = np.reshape(rand_pos, (best.shape[0], best.shape[1]))
+        ins_pos = pop[np.random.randint(0, len(pop)-1)]
+        rand_pos = rand_pos+0.5*(best-ins_pos)
+        return rand_pos
 
     def fit_predict(self, Beta):
         F = np.dot(self.K, Beta)
