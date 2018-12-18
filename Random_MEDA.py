@@ -59,7 +59,7 @@ def proxy_a_distance(source_X, target_X):
 
 
 class Random_MEDA:
-    def __init__(self, kernel_type='primal', dim=30, lamb=1, rho=1.0, eta=0.1, p=10, gamma=1, T=10, seed=1617):
+    def __init__(self, kernel_type='primal', dim=30, lamb=1, rho=1.0, eta=0.1, p=10, gamma=1.0, T=10, seed=1617):
         '''
         Init func
         :param kernel_type: kernel, values: 'primal' | 'linear' | 'rbf' | 'sam'
@@ -108,6 +108,7 @@ class Random_MEDA:
         self.C = len(np.unique(Ys))
 
         # Transform data using gfk
+        # should be done faster by reading from gfk file.
         gfk = GFK.GFK(dim=self.dim)
         _, Xs_new, Xt_new = gfk.fit(Xs, Xt)
         Xs_new, Xt_new = Xs_new.T, Xt_new.T
@@ -131,7 +132,11 @@ class Random_MEDA:
         pos_min = -10
         pos_max = 10
         pop = []
-        fits = []
+        pop_mmd = [sys.float_info.max]*N
+        pop_srm = [sys.float_info.max]*N
+        pop_fit = [sys.float_info.max]*N
+        pop_src_acc = [sys.float_info.max]*N
+        pop_tar_acc = [sys.float_info.max]*N
         NBIT = (self.ns+self.nt)*self.C
 
         # initialization
@@ -139,56 +144,85 @@ class Random_MEDA:
             poistion = np.random.uniform(pos_min, pos_max, NBIT)
             beta = np.reshape(poistion, (self.ns+self.nt, self.C))
             pop.append(beta)
-            fits.append(sys.float_info.max)
+            pop_fit.append(sys.float_info.max)
 
         # evolution
         archive = []
+        archive_fit = [sys.float_info.max]*N
+        archive_src_acc = [sys.float_info.max]*N
+        archive_tar_acc = [sys.float_info.max]*N
+        archive_mmd = [sys.float_info.max]*N
+        archive_srm = [sys.float_info.max]*N
         best = None
         best_fitness = sys.float_info.max
-        best_acc_s = -sys.float_info.max
-        best_acc_t = -sys.float_info.max
+        best_src_acc = -sys.float_info.max
+        best_tar_acc = -sys.float_info.max
+        best_mmd = 0
+        best_srm = 0
+
         for g in range(GEN):
             print('==============Gen %d===============' % g)
             for index, ind in enumerate(pop):
-                new_position, fitness, ind_acc_s, ind_acc_t = self.fit_predict(pop[index])
-                print("Ind %d has fitness of %f and source accuracy %f and target accuracy %f." % (index, fitness, ind_acc_s, ind_acc_t))
+                # refine the position using gradient descent
+                new_position, fitness, mmd, srm, src_acc, tar_acc = self.fit_predict(pop[index])
+                print("Ind %d has fitness of %f and source accuracy %f and target accuracy %f."
+                      % (index, fitness, src_acc, tar_acc))
 
                 # if the fitness is not improved, store the previous position in the archive
                 # randomly create a new position based on the best
                 # store the current position to archive
-                if fits[index] <= fitness:
+                if pop_fit[index] <= fitness:
                     print("***Reset ind %d" % index)
                     new_position = self.re_initialize(pop, best, pos_min, pos_max)
-                    new_position, fitness, ind_acc_s, ind_acc_t = self.fit_predict(new_position)
-                    archive.append(pop[index])
-                    print("archive size %d***" %len(archive))
+                    new_position, fitness, mmd, srm, src_acc, tar_acc = self.fit_predict(new_position)
+                    print("archive size %d" % len(archive))
+                    print("Ind %d is re-intialized and fitness of %f and source accuracy %f and target accuracy %f.***"
+                          % (index, fitness, src_acc, tar_acc))
 
+                    # append the old ind
+                    archive.append(pop[index])
+                    archive_fit.append(fitness)
+                    archive_mmd.append(mmd)
+                    archive_srm.append(srm)
+                    archive_src_acc.append(src_acc)
+                    archive_tar_acc.append(tar_acc)
+
+                # now update the new position with its fitness
                 pop[index] = new_position
-                fits[index] = fitness
+                pop_fit[index] = fitness
+                pop_mmd[index] = mmd
+                pop_srm[index] = srm
+                pop_src_acc[index] = src_acc
+                pop_tar_acc[index] = tar_acc
 
                 # update best if necessary
                 if fitness < best_fitness:
                     best = np.copy(pop[index])
                     best_fitness = fitness
-                    best_acc_s = ind_acc_s
-                    best_acc_t = ind_acc_t
+                    best_src_acc = src_acc
+                    best_tar_acc = tar_acc
+                    best_srm = srm
+                    best_mmd = mmd
 
-            print("Best fitness of %f and source accuracy %f and target accuracy %f." % (best_fitness, best_acc_s, best_acc_t))
+            print("Best fitness of %f and source accuracy %f and target accuracy %f." % (best_fitness, best_src_acc, best_tar_acc))
 
         archive.append(best)
         print("Final archive size %d" % len(archive))
         all_labels = []
-        for ind in pop:
-            Beta = np.copy(ind)
-            Beta = np.reshape(Beta, (self.ns+self.nt, self.C))
-            F = np.dot(self.K, Beta)
+        print("========From archive========")
+        for index, ind in enumerate(pop):
+            print("Member %d has fitness = %f, srm = %f, mmd = %f, src_acc = %f, tar_acc = %f"
+                  % (index, archive_fit[index], archive_srm[index],
+                     archive_mmd[index], archive_src_acc[index],
+                     archive_tar_acc[index]))
+            F = np.dot(self.K, ind)
             Y_pseudo = np.argmax(F, axis=1) + 1
             Yt_pseu = Y_pseudo[self.ns:].tolist()
             all_labels.append(Yt_pseu)
         all_labels = np.array(all_labels)
         vote_label = []
         for ins_idx in range(all_labels.shape[1]):
-            ins_labels = all_labels[:,ins_idx]
+            ins_labels = all_labels[:, ins_idx]
             counts = np.bincount(ins_labels)
             label = np.argmax(counts)
             vote_label.append(label)
@@ -243,7 +277,7 @@ class Random_MEDA:
         Yt_pseu = Y_pseudo[self.ns:]
         acc_t = np.mean(Yt_pseu == self.Yt)
 
-        return Beta, fitness, acc_s, acc_t
+        return Beta, fitness, MMD, SRM, acc_s, acc_t
 
 
 if __name__ == '__main__':
