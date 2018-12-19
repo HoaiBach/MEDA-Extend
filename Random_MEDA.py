@@ -92,7 +92,7 @@ class Random_MEDA:
         self.M0 = None
         self.A = None
         self.K = None
-        self.YY = None # 1 hot coding
+        self.YY = None  # 1 hot coding
         self.L = 0
         # self.Yt_pseu = None
 
@@ -132,27 +132,27 @@ class Random_MEDA:
         pos_min = -10
         pos_max = 10
         pop = []
-        pop_mmd = [sys.float_info.max]*N
-        pop_srm = [sys.float_info.max]*N
-        pop_fit = [sys.float_info.max]*N
-        pop_src_acc = [sys.float_info.max]*N
-        pop_tar_acc = [sys.float_info.max]*N
-        NBIT = (self.ns+self.nt)*self.C
+        pop_mmd = [sys.float_info.max] * N
+        pop_srm = [sys.float_info.max] * N
+        pop_fit = [sys.float_info.max] * N
+        pop_src_acc = [sys.float_info.max] * N
+        pop_tar_acc = [sys.float_info.max] * N
+        NBIT = (self.ns + self.nt) * self.C
 
         # initialization
         for i in range(N):
             poistion = np.random.uniform(pos_min, pos_max, NBIT)
-            beta = np.reshape(poistion, (self.ns+self.nt, self.C))
+            beta = np.reshape(poistion, (self.ns + self.nt, self.C))
             pop.append(beta)
             pop_fit.append(sys.float_info.max)
 
         # evolution
         archive = []
-        archive_fit = [sys.float_info.max]*N
-        archive_src_acc = [sys.float_info.max]*N
-        archive_tar_acc = [sys.float_info.max]*N
-        archive_mmd = [sys.float_info.max]*N
-        archive_srm = [sys.float_info.max]*N
+        archive_fit = []
+        archive_src_acc = []
+        archive_tar_acc = []
+        archive_mmd = []
+        archive_srm = []
         best = None
         best_fitness = sys.float_info.max
         best_src_acc = -sys.float_info.max
@@ -204,13 +204,38 @@ class Random_MEDA:
                     best_srm = srm
                     best_mmd = mmd
 
-            print("Best fitness of %f and source accuracy %f and target accuracy %f." % (best_fitness, best_src_acc, best_tar_acc))
+            print("Best fitness of %f and source accuracy %f and target accuracy %f." % (
+                best_fitness, best_src_acc, best_tar_acc))
 
         archive.append(best)
+        archive_fit.append(best_fitness)
+        archive_mmd.append(best_mmd)
+        archive_srm.append(best_srm)
+        archive_src_acc.append(best_src_acc)
+        archive_tar_acc.append(best_tar_acc)
+
+        nd_indices = self.get_non_dominated(archive, archive_srm, archive_mmd)
+        print("================All archive==================")
+        for index, ind in enumerate(archive):
+            print("Member %d has fitness = %f, srm = %f, mmd = %f, src_acc = %f, tar_acc = %f"
+                  % (index, archive_fit[index], archive_srm[index],
+                     archive_mmd[index], archive_src_acc[index],
+                     archive_tar_acc[index]))
+        print("================Non-dominated==================")
+        for index in nd_indices:
+            print("Member %d has fitness = %f, srm = %f, mmd = %f, src_acc = %f, tar_acc = %f"
+                  % (index, archive_fit[index], archive_srm[index],
+                     archive_mmd[index], archive_src_acc[index],
+                     archive_tar_acc[index]))
+
         print("Final archive size %d" % len(archive))
+
         all_labels = []
-        print("========From archive========")
-        for index, ind in enumerate(pop):
+        print("========From all archive========")
+        all_indices = range(len(archive))
+        class_indices = all_indices
+        for index in class_indices:
+            ind = archive[index]
             print("Member %d has fitness = %f, srm = %f, mmd = %f, src_acc = %f, tar_acc = %f"
                   % (index, archive_fit[index], archive_srm[index],
                      archive_mmd[index], archive_src_acc[index],
@@ -229,12 +254,65 @@ class Random_MEDA:
         acc = np.mean(vote_label == Yt)
         print(acc)
 
+        all_labels = []
+        print("========From non-dominated========")
+        class_indices = nd_indices
+        for index in class_indices:
+            ind = archive[index]
+            print("Member %d has fitness = %f, srm = %f, mmd = %f, src_acc = %f, tar_acc = %f"
+              % (index, archive_fit[index], archive_srm[index],
+                 archive_mmd[index], archive_src_acc[index],
+                 archive_tar_acc[index]))
+            F = np.dot(self.K, ind)
+            Y_pseudo = np.argmax(F, axis=1) + 1
+            Yt_pseu = Y_pseudo[self.ns:].tolist()
+            all_labels.append(Yt_pseu)
+        all_labels = np.array(all_labels)
+        vote_label = []
+        for ins_idx in range(all_labels.shape[1]):
+            ins_labels = all_labels[:, ins_idx]
+            counts = np.bincount(ins_labels)
+            label = np.argmax(counts)
+            vote_label.append(label)
+        acc = np.mean(vote_label == Yt)
+        print(acc)
+
+        print("=============Accuracy best=============")
+        F = np.dot(self.K, best)
+        Y_pseudo = np.argmax(F, axis=1) + 1
+        Yt_pseu = Y_pseudo[self.ns:].tolist()
+        acc = np.mean(Yt_pseu == Yt)
+        print(acc)
+
+    def get_non_dominated(self, archive, archive_smr, archive_mmd):
+        indices = []
+        for index in range(len(archive)):
+            if len(indices) == 0:
+                indices.append(index)
+            else:
+                # go through each item to check
+                be_dominated = False
+                cur_smr = archive_smr[index]
+                cur_mmd = archive_mmd[index]
+                to_remove = []
+                for store_index in indices:
+                    if archive_smr[store_index] <= cur_smr and archive_mmd[store_index] <= cur_mmd:
+                        be_dominated = True
+                        break
+                    elif archive_smr[store_index] > cur_smr and archive_mmd[store_index] > cur_mmd:
+                        to_remove.append(store_index)
+
+                if not be_dominated:
+                    indices.append(index)
+                    indices = [index for index in indices if index not in to_remove]
+        return indices
+
     def re_initialize(self, pop, best, pos_min, pos_max):
         NBIT = best.shape[0] * best.shape[1]
         rand_pos = np.random.uniform(pos_min, pos_max, NBIT)
         rand_pos = np.reshape(rand_pos, (best.shape[0], best.shape[1]))
-        ins_pos = pop[np.random.randint(0, len(pop)-1)]
-        rand_pos = rand_pos+0.5*(best-ins_pos)
+        ins_pos = pop[np.random.randint(0, len(pop) - 1)]
+        rand_pos = rand_pos + 0.5 * (best - ins_pos)
         return rand_pos
 
     def fit_predict(self, Beta):
@@ -265,8 +343,8 @@ class Random_MEDA:
 
         # Now given the new beta, calculate the fitness
         SRM = np.linalg.norm(np.dot(self.YY.T - np.dot(Beta.T, self.K), self.A)) \
-              + self.eta*np.linalg.multi_dot([Beta.T, self.K, Beta]).trace()
-        MMD = self.lamb*np.linalg.multi_dot([Beta.T, np.linalg.multi_dot([self.K, M, self.K]), Beta]).trace()
+              + self.eta * np.linalg.multi_dot([Beta.T, self.K, Beta]).trace()
+        MMD = self.lamb * np.linalg.multi_dot([Beta.T, np.linalg.multi_dot([self.K, M, self.K]), Beta]).trace()
         fitness = SRM + MMD
 
         # Calcuate the accuracy
@@ -281,7 +359,6 @@ class Random_MEDA:
 
 
 if __name__ == '__main__':
-
     source = np.genfromtxt("data/Source", delimiter=",")
     m = source.shape[1] - 1
     Xs = source[:, 0:m]
