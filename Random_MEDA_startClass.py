@@ -8,9 +8,16 @@ import numpy as np
 import scipy.io
 from sklearn import metrics
 from sklearn import svm
-from sklearn.neighbors import KNeighborsClassifier
 import FitnessFunction
 import sys
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.gaussian_process.kernels import RBF
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 
 import GFK
 
@@ -98,47 +105,21 @@ class Random_MEDA:
 
         np.random.seed(seed)
 
-    def initialize_with_class(self, classifier):
-        classifier.fit(self.Xs, self.Ys)
-        Yt_pseu = classifier.predict(self.Xt)
-        mu = 0.5
-        N = 0
-        for c in range(1, self.C + 1):
-            e = np.zeros((self.ns + self.nt, 1))
-            tt = self.Ys == c
-            e[np.where(tt == True)] = 1.0 / len(self.Ys[np.where(self.Ys == c)])
-            yy = Yt_pseu == c
-            ind = np.where(yy == True)
-            inds = [item + self.ns for item in ind]
-            if len(Yt_pseu[np.where(Yt_pseu == c)]) == 0:
-                e[tuple(inds)] = 0.0
-            else:
-                e[tuple(inds)] = -1.0 / len(Yt_pseu[np.where(Yt_pseu == c)])
-            e[np.isinf(e)] = 0
-            N += np.dot(e, e.T)
-        M = (1 - mu) * self.M0 + mu * N
-        M /= np.linalg.norm(M, 'fro')
-        left = np.dot(self.A + self.lamb * M + self.rho * self.L, self.K) \
-               + self.eta * np.eye(self.ns + self.nt, self.ns + self.nt)
-        Beta = np.dot(np.linalg.inv(left), np.dot(self.A, self.YY))
-        return Beta
-
     def evolve(self, Xs, Ys, Xt, Yt):
-        self.Xs = Xs
-        self.Ys = Ys
-        self.Xt = Xt
-        self.Yt = Yt
-
         self.ns, self.nt = Xs.shape[0], Xt.shape[0]
         self.C = len(np.unique(Ys))
+        self.Ys = Ys
+        self.Yt = Yt
 
         # Transform data using gfk
         # should be done faster by reading from gfk file.
         gfk = GFK.GFK(dim=self.dim)
         _, Xs_new, Xt_new = gfk.fit(Xs, Xt)
-        Xs_new, Xt_new = Xs_new.T, Xt_new.T
-        X = np.hstack((Xs_new, Xt_new))
+        X = np.hstack((Xs_new.T, Xt_new.T))
         X /= np.linalg.norm(X, axis=0)
+        test = X[:self.ns, :]
+        self.Xs = X[:, :self.ns].T
+        self.Xt = X[:, self.ns:].T
 
         # build some matrices that are not changed
         self.K = kernel(self.kernel_type, X, X2=None, gamma=self.gamma)
@@ -157,6 +138,7 @@ class Random_MEDA:
         pos_min = -10
         pos_max = 10
         pop = []
+
         pop_mmd = [sys.float_info.max] * N
         pop_srm = [sys.float_info.max] * N
         pop_fit = [sys.float_info.max] * N
@@ -164,9 +146,33 @@ class Random_MEDA:
         pop_tar_acc = [sys.float_info.max] * N
         NBIT = (self.ns + self.nt) * self.C
 
+        classifiers = []
+        # classifiers.append(KNeighborsClassifier(1))
+        # classifiers.append(KNeighborsClassifier(3))
+        # classifiers.append(KNeighborsClassifier(5))
+        # classifiers.append(KNeighborsClassifier(7))
+        # classifiers.append(KNeighborsClassifier(9))
+        # classifiers.append(SVC(kernel="linear", C=0.025, random_state=1617))
+        # classifiers.append(SVC(kernel="rbf", C=1, gamma=2, random_state=1617))
+        # classifiers.append(RandomForestClassifier(max_depth=5, n_estimators=10))
+        # classifiers.append(GaussianNB())
+        # classifiers.append(QuadraticDiscriminantAnalysis())
+
+        classifiers.append(KNeighborsClassifier(1))
+        classifiers.append(KNeighborsClassifier(5))
+        classifiers.append(SVC(kernel="linear", C=0.025, random_state=1617))
+        classifiers.append(SVC(kernel="rbf", C=1, gamma=2, random_state=1617))
+        classifiers.append(GaussianProcessClassifier(1.0 * RBF(1.0)))
+        classifiers.append(GaussianNB())
+        classifiers.append(DecisionTreeClassifier(max_depth=5))
+        classifiers.append(RandomForestClassifier(max_depth=5, n_estimators=10))
+        classifiers.append(AdaBoostClassifier())
+        classifiers.append(QuadraticDiscriminantAnalysis())
+
         # initialization
         for i in range(N):
-            beta = self.initialize_with_class(KNeighborsClassifier(n_neighbors=i+1))
+            print("Initialized %d" % i)
+            beta = self.initialize_with_class(classifiers[i])
             pop.append(beta)
 
         # evolution
@@ -306,6 +312,32 @@ class Random_MEDA:
         Yt_pseu = Y_pseudo[self.ns:].tolist()
         acc = np.mean(Yt_pseu == Yt)
         print(acc)
+
+    def initialize_with_class(self, classifier):
+        classifier.fit(self.Xs, self.Ys)
+        Yt_pseu = classifier.predict(self.Xt)
+        mu = 0.5
+        N = 0
+        for c in range(1, self.C + 1):
+            e = np.zeros((self.ns + self.nt, 1))
+            tt = self.Ys == c
+            e[np.where(tt == True)] = 1.0 / len(self.Ys[np.where(self.Ys == c)])
+            yy = Yt_pseu == c
+            ind = np.where(yy == True)
+            inds = [item + self.ns for item in ind]
+            if len(Yt_pseu[np.where(Yt_pseu == c)]) == 0:
+                e[tuple(inds)] = 0.0
+            else:
+                e[tuple(inds)] = -1.0 / len(Yt_pseu[np.where(Yt_pseu == c)])
+            e[np.isinf(e)] = 0
+            N += np.dot(e, e.T)
+        M = (1 - mu) * self.M0 + mu * N
+        M /= np.linalg.norm(M, 'fro')
+        left = np.dot(self.A + self.lamb * M + self.rho * self.L, self.K) \
+               + self.eta * np.eye(self.ns + self.nt, self.ns + self.nt)
+        Beta = np.dot(np.linalg.inv(left), np.dot(self.A, self.YY))
+        return Beta
+
 
     def get_non_dominated(self, archive, archive_smr, archive_mmd):
         indices = []
