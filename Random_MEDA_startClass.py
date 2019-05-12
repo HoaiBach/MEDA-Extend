@@ -5,10 +5,12 @@
 """
 
 import numpy as np
+import scipy.io
 from sklearn import metrics
 from sklearn import svm
-from sklearn.neighbors import KNeighborsClassifier
+import FitnessFunction
 import sys
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
@@ -16,6 +18,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
+
 import GFK
 
 
@@ -63,8 +66,7 @@ def proxy_a_distance(source_X, target_X):
 
 
 class Random_MEDA:
-    def __init__(self, kernel_type='primal', dim=30, lamb=1, rho=1.0, eta=0.1, p=10, gamma=1.0,
-                 T=10, init_op=0, re_init_op=0, seed=1617):
+    def __init__(self, kernel_type='primal', dim=30, lamb=1, rho=1.0, eta=0.1, p=10, gamma=1.0, T=10, seed=1617):
         '''
         Init func
         :param kernel_type: kernel, values: 'primal' | 'linear' | 'rbf' | 'sam'
@@ -101,28 +103,21 @@ class Random_MEDA:
         self.L = 0
         # self.Yt_pseu = None
 
-
-        self.init_op = init_op  # 0-random, 1- KNN (diff K), 2-10 diff classifiers
-        self.re_init_op = re_init_op # 0-random, 1-using best
-
         np.random.seed(seed)
 
     def evolve(self, Xs, Ys, Xt, Yt):
-        self.Xs = Xs
-        self.Ys = Ys
-        self.Xt = Xt
-        self.Yt = Yt
-
         self.ns, self.nt = Xs.shape[0], Xt.shape[0]
         self.C = len(np.unique(Ys))
+        self.Ys = Ys
+        self.Yt = Yt
 
         # Transform data using gfk
         # should be done faster by reading from gfk file.
         gfk = GFK.GFK(dim=self.dim)
         _, Xs_new, Xt_new = gfk.fit(Xs, Xt)
-        Xs_new, Xt_new = Xs_new.T, Xt_new.T
-        X = np.hstack((Xs_new, Xt_new))
+        X = np.hstack((Xs_new.T, Xt_new.T))
         X /= np.linalg.norm(X, axis=0)
+        test = X[:self.ns, :]
         self.Xs = X[:, :self.ns].T
         self.Xt = X[:, self.ns:].T
 
@@ -143,6 +138,7 @@ class Random_MEDA:
         pos_min = -10
         pos_max = 10
         pop = []
+
         pop_mmd = [sys.float_info.max] * N
         pop_srm = [sys.float_info.max] * N
         pop_fit = [sys.float_info.max] * N
@@ -150,39 +146,34 @@ class Random_MEDA:
         pop_tar_acc = [sys.float_info.max] * N
         NBIT = (self.ns + self.nt) * self.C
 
+        classifiers = []
+        # classifiers.append(KNeighborsClassifier(1))
+        # classifiers.append(KNeighborsClassifier(3))
+        # classifiers.append(KNeighborsClassifier(5))
+        # classifiers.append(KNeighborsClassifier(7))
+        # classifiers.append(KNeighborsClassifier(9))
+        # classifiers.append(SVC(kernel="linear", C=0.025, random_state=1617))
+        # classifiers.append(SVC(kernel="rbf", C=1, gamma=2, random_state=1617))
+        # classifiers.append(RandomForestClassifier(max_depth=5, n_estimators=10))
+        # classifiers.append(GaussianNB())
+        # classifiers.append(QuadraticDiscriminantAnalysis())
+
+        classifiers.append(KNeighborsClassifier(1))
+        classifiers.append(KNeighborsClassifier(5))
+        classifiers.append(SVC(kernel="linear", C=0.025, random_state=1617))
+        classifiers.append(SVC(kernel="rbf", C=1, gamma=2, random_state=1617))
+        classifiers.append(GaussianProcessClassifier(1.0 * RBF(1.0)))
+        classifiers.append(GaussianNB())
+        classifiers.append(DecisionTreeClassifier(max_depth=5))
+        classifiers.append(RandomForestClassifier(max_depth=5, n_estimators=10))
+        classifiers.append(AdaBoostClassifier())
+        classifiers.append(QuadraticDiscriminantAnalysis())
+
         # initialization
-        if self.init_op == 0:
-            # start randomly
-            for i in range(N):
-                poistion = np.random.uniform(pos_min, pos_max, NBIT)
-                beta = np.reshape(poistion, (self.ns + self.nt, self.C))
-                pop.append(beta)
-        elif self.init_op == 1:
-            # using different KNN
-            for i in range(N):
-                classifier = KNeighborsClassifier(2*i+1)
-                beta = self.initialize_with_class(classifier)
-                pop.append(beta)
-        elif self.init_op == 2:
-            # using differnet classifiers
-            classifiers = list([])
-            classifiers.append(KNeighborsClassifier(1))
-            classifiers.append(KNeighborsClassifier(5))
-            classifiers.append(SVC(kernel="linear", C=0.025, random_state=1617))
-            classifiers.append(SVC(kernel="rbf", C=1, gamma=2, random_state=1617))
-            classifiers.append(GaussianProcessClassifier(1.0 * RBF(1.0)))
-            classifiers.append(GaussianNB())
-            classifiers.append(DecisionTreeClassifier(max_depth=5))
-            classifiers.append(RandomForestClassifier(max_depth=5, n_estimators=10))
-            classifiers.append(AdaBoostClassifier())
-            classifiers.append(QuadraticDiscriminantAnalysis())
-            assert len(classifiers) == N
-            for i in range(N):
-                beta = self.initialize_with_class(classifiers[i])
-                pop.append(beta)
-        else:
-            print("Unsupported Initialize Strategy")
-            sys.exit(1)
+        for i in range(N):
+            print("Initialized %d" % i)
+            beta = self.initialize_with_class(classifiers[i])
+            pop.append(beta)
 
         # evolution
         archive = []
@@ -211,8 +202,9 @@ class Random_MEDA:
                 # store the current position to archive
                 if pop_fit[index] <= fitness:
                     print("***Reset ind %d" % index)
-                    new_position = self.re_initialize(pop, best, pos_min, pos_max, strategy=self.re_init_op)
+                    new_position = self.re_initialize(pop, best, pos_min, pos_max)
                     new_position, fitness, mmd, srm, src_acc, tar_acc = self.fit_predict(new_position)
+                    print("archive size %d" % len(archive))
                     print("Ind %d is re-intialized and fitness of %f and source accuracy %f and target accuracy %f.***"
                           % (index, fitness, src_acc, tar_acc))
 
@@ -346,6 +338,7 @@ class Random_MEDA:
         Beta = np.dot(np.linalg.inv(left), np.dot(self.A, self.YY))
         return Beta
 
+
     def get_non_dominated(self, archive, archive_smr, archive_mmd):
         indices = []
         for index in range(len(archive)):
@@ -369,23 +362,13 @@ class Random_MEDA:
                     indices = [index for index in indices if index not in to_remove]
         return indices
 
-    def re_initialize(self, pop, best, pos_min, pos_max, strategy=0):
+    def re_initialize(self, pop, best, pos_min, pos_max):
         NBIT = best.shape[0] * best.shape[1]
         rand_pos = np.random.uniform(pos_min, pos_max, NBIT)
         rand_pos = np.reshape(rand_pos, (best.shape[0], best.shape[1]))
-
-        if strategy == 0:
-            # re-initialize randomly
-            return rand_pos
-        elif strategy == 1:
-            # re-initinalize using best and the direction from
-            # a population member to best
-            ins_pos = pop[np.random.randint(0, len(pop) - 1)]
-            rand_pos = rand_pos + 0.5 * (best - ins_pos)
-            return rand_pos
-        else:
-            print("Unsupported re-initialization strategy.")
-            sys.exit(1)
+        ins_pos = pop[np.random.randint(0, len(pop) - 1)]
+        rand_pos = rand_pos + 0.5 * (best - ins_pos)
+        return rand_pos
 
     def fit_predict(self, Beta):
         F = np.dot(self.K, Beta)
@@ -442,6 +425,5 @@ if __name__ == '__main__':
     Yt = np.ravel(target[:, m:m + 1])
     Yt = np.array([int(label) for label in Yt])
 
-    r_meda = Random_MEDA(kernel_type='rbf', dim=20, lamb=10, rho=1.0, eta=0.1, p=10, gamma=0.5, T=10,
-                         init_op=2, re_init_op=1, seed=1617)
+    r_meda = Random_MEDA(kernel_type='rbf', dim=20, lamb=10, rho=1.0, eta=0.1, p=10, gamma=0.5, T=10)
     r_meda.evolve(Xs, Ys, Xt, Yt)
