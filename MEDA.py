@@ -58,7 +58,7 @@ def proxy_a_distance(source_X, target_X):
 
 
 class MEDA:
-    def __init__(self, kernel_type='primal', dim=30, lamb=1, rho=1.0, eta=0.1, p=10, gamma=1, T=10):
+    def __init__(self, kernel_type='primal', dim=30, lamb=1, rho=1.0, eta=0.1, p=10, gamma=1, T=10, out=None):
         '''
         Init func
         :param kernel_type: kernel, values: 'primal' | 'linear' | 'rbf' | 'sam'
@@ -78,6 +78,7 @@ class MEDA:
         self.gamma = gamma
         self.p = p
         self.T = T
+        self.out = out
 
     def estimate_mu(self, _X1, _Y1, _X2, _Y2):
         adist_m = proxy_a_distance(_X1, _X2)
@@ -164,31 +165,44 @@ class MEDA:
                   + self.eta*np.linalg.multi_dot([Beta.T, K, Beta]).trace()
             MMD = self.lamb*np.linalg.multi_dot([Beta.T, np.linalg.multi_dot([K, M, K]), Beta]).trace()
             fitness = SRM + MMD
-            print(fitness, SRM, MMD)
+            # print(fitness, SRM, MMD)
 
             F = np.dot(K, Beta)
             Cls = np.argmax(F, axis=1) + 1
             Cls = Cls[ns:]
             acc = np.mean(Cls == Yt.ravel())
             list_acc.append(acc)
-            print('MEDA iteration [{}/{}]: mu={:.2f}, Acc={:.4f}'.format(t, self.T, mu, acc))
-            print('=============================================')
+            self.out.write("Iteration %d, Fitness %f\n" % (t, fitness))
+            # print('MEDA iteration [{}/{}]: mu={:.2f}, Acc={:.4f}'.format(t, self.T, mu, acc))
+            # print('=============================================')
         return acc, Cls, list_acc
 
 
 if __name__ == '__main__':
+    datasets = np.array(['GasSensor1-4', 'GasSensor1-2', 'GasSensor1-3',
+                         'GasSensor1-5', 'GasSensor1-6', 'GasSensor1-7',
+                         'GasSensor1-8', 'GasSensor1-9', 'GasSensor1-10',
+                         'SURFa-c', 'SURFa-d', 'SURFa-w', 'SURFc-a',
+                         'SURFc-d', 'SURFc-w', 'SURFd-a', 'SURFd-c',
+                         'SURFd-w', 'SURFw-a', 'SURFw-c', 'SURFw-d',
+                         'MNIST-USPS', 'USPS-MNIST'])
 
-    source = np.genfromtxt("data/Source", delimiter=",")
-    m = source.shape[1] - 1
-    Xs = source[:, 0:m]
-    Ys = np.ravel(source[:, m:m + 1])
-    Ys = np.array([int(label) for label in Ys])
+    for dataset in datasets:
+        source = np.genfromtxt("/home/nguyenhoai2/Grid/data/TransferLearning/UnPairs/" + dataset + "/Source",
+                               delimiter=",")
+        m = source.shape[1] - 1
+        Xs = source[:, 0:m]
+        Ys = np.ravel(source[:, m:m + 1])
+        Ys = np.array([int(label) for label in Ys])
 
-    target = np.genfromtxt("data/Target", delimiter=",")
-    Xt = target[:, 0:m]
-    Yt = np.ravel(target[:, m:m + 1])
-    Yt = np.array([int(label) for label in Yt])
+        target = np.genfromtxt("/home/nguyenhoai2/Grid/data/TransferLearning/UnPairs/" + dataset + "/Target",
+                               delimiter=",")
+        Xt = target[:, 0:m]
+        Yt = np.ravel(target[:, m:m + 1])
+        Yt = np.array([int(label) for label in Yt])
 
-    meda = MEDA(kernel_type='rbf', dim=20, lamb=10, rho=1.0, eta=0.1, p=10, gamma=0.5, T=100)
-    acc, ypre, list_acc = meda.fit_predict(Xs, Ys, Xt, Yt)
-    print(acc)
+        file = open("/home/nguyenhoai2/Grid/results/R-MEDA/" + dataset + "/MEDA_iteration.txt", "w")
+        meda = MEDA(kernel_type='rbf', dim=20, lamb=10, rho=1.0, eta=0.1, p=10, gamma=0.5, T=100, out=file)
+        acc, ypre, list_acc = meda.fit_predict(Xs, Ys, Xt, Yt)
+        file.write(str(acc))
+        file.close()
