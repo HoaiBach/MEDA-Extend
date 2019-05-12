@@ -5,12 +5,8 @@
 """
 
 import numpy as np
-import scipy.io
 from sklearn import metrics
 from sklearn import svm
-from sklearn.neighbors import KNeighborsClassifier
-import FitnessFunction
-import sys
 
 import GFK
 
@@ -59,7 +55,7 @@ def proxy_a_distance(source_X, target_X):
 
 
 class Random_MEDA:
-    def __init__(self, kernel_type='primal', dim=30, lamb=1, rho=1.0, eta=0.1, p=10, gamma=1, T=10, seed=1617):
+    def __init__(self, kernel_type='primal', dim=30, lamb=1, rho=1.0, eta=0.1, p=10, gamma=1.0, T=10, seed=1617):
         '''
         Init func
         :param kernel_type: kernel, values: 'primal' | 'linear' | 'rbf' | 'sam'
@@ -247,6 +243,9 @@ class Random_MEDA:
 
 
 if __name__ == '__main__':
+    import sys
+    run = int(sys.argv[1])
+    random_seed = 1617*run
 
     source = np.genfromtxt("data/Source", delimiter=",")
     m = source.shape[1] - 1
@@ -259,5 +258,5 @@ if __name__ == '__main__':
     Yt = np.ravel(target[:, m:m + 1])
     Yt = np.array([int(label) for label in Yt])
 
-    r_meda = Random_MEDA(kernel_type='rbf', dim=20, lamb=10, rho=1.0, eta=0.1, p=10, gamma=0.5, T=10)
+    r_meda = Random_MEDA(kernel_type='rbf', dim=20, lamb=10, rho=1.0, eta=0.1, p=10, gamma=0.5, T=10, seed=random_seed)
     r_meda.evolve(Xs, Ys, Xt, Yt)
