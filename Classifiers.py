@@ -13,7 +13,7 @@ datasets = np.array(['GasSensor1-4', 'GasSensor1-2', 'GasSensor1-3',
 
 classifiers = list([])
 classifiers.append(KNeighborsClassifier(1))
-classifiers.append(RandomForestClassifier(max_depth=5, n_estimators=10, random_state=np.random.randint(2**10)))
+classifiers.append(RandomForestClassifier(max_depth=5, n_estimators=10, random_state=np.random.randint(2 ** 10)))
 classifiers.append(SVC(kernel="rbf", C=1, gamma=2, random_state=np.random.randint(2 ** 10)))
 
 names = list(["1NN", "RF", "SVM"])
@@ -35,6 +35,6 @@ for dataset in datasets:
     for index, classifier in enumerate(classifiers):
         classifier.fit(Xs, Ys)
         acc = classifier.score(Xt, Yt)
-        file = open("/home/nguyenhoai2/Grid/results/R-MEDA/" + dataset + "/"+names[index]+".txt", "w")
+        file = open("/home/nguyenhoai2/Grid/results/R-MEDA/" + dataset + "/" + names[index] + ".txt", "w")
         file.write(str(acc))
         file.close()

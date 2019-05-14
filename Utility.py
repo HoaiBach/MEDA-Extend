@@ -7,6 +7,7 @@ import numpy as np
 from collections import Counter
 from sklearn.metrics.pairwise import euclidean_distances as ecd
 
+
 def normalize_src_tar(src_fea, tar_fea):
     src_fea_new = np.copy(src_fea)
     tar_fea_new = np.copy(tar_fea)
@@ -19,17 +20,17 @@ def normalize_src_tar(src_fea, tar_fea):
         min_value = min_fea[col]
 
         for row in range(len(src_fea_new)):
-            if(max_value == min_value):
-                src_fea_new[row,col] = 1
+            if (max_value == min_value):
+                src_fea_new[row, col] = 1
             else:
-                src_fea_new[row,col] = (src_fea_new[row,col]-min_value)/(max_value-min_value)
+                src_fea_new[row, col] = (src_fea_new[row, col] - min_value) / (max_value - min_value)
 
         for row in range(len(tar_fea_new)):
-            if(max_value == min_value):
-                tar_fea_new[row,col] = 1
+            if (max_value == min_value):
+                tar_fea_new[row, col] = 1
             else:
-                tar_fea_new[row,col] = (tar_fea_new[row,col]-min_value)/(max_value-min_value)
-    
+                tar_fea_new[row, col] = (tar_fea_new[row, col] - min_value) / (max_value - min_value)
+
     return src_fea_new, tar_fea_new
 
 
@@ -40,7 +41,7 @@ def standarize_src_tar(src_fea, tar_fea):
 
     stand_data = standarize_data(all_fea_new)
     stand_src = stand_data[0:len(src_fea_new), :]
-    stand_tar = stand_data[len(src_fea_new): len(src_fea_new)+len(tar_fea_new), :]
+    stand_tar = stand_data[len(src_fea_new): len(src_fea_new) + len(tar_fea_new), :]
 
     return stand_src, stand_tar
 
@@ -56,10 +57,10 @@ def standarize_data(data):
             std_value = std[col]
             mean_value = mean[col]
 
-            if std_value==0:
+            if std_value == 0:
                 data_new[row, col] = 1
             else:
-                data_new[row, col] = (data_new[row, col] - mean_value)/std_value
+                data_new[row, col] = (data_new[row, col] - mean_value) / std_value
 
     return data_new
 
@@ -67,14 +68,14 @@ def standarize_data(data):
 def normalize_square_row(data):
     data_new = np.copy(data)
     denominators = np.sqrt(np.sum(np.square(data), axis=0))
-    data_new = data_new/denominators
+    data_new = data_new / denominators
     return data_new
 
 
 def normalize_square_column(data):
     data_new = np.copy(data)
     denominators = np.sqrt(np.sum(np.square(data), axis=1))
-    data_new = data_new/denominators[:, None]
+    data_new = data_new / denominators[:, None]
     return data_new
 
 
@@ -96,13 +97,14 @@ def balanced_sample_maker(X, y, sample_size, random_seed=1617):
     balanced_copy_idx = []
     for gb_level, gb_idx in groupby_levels.items():
         over_sample_idx = np.random.choice(gb_idx, size=sample_size, replace=True).tolist()
-        balanced_copy_idx+=over_sample_idx
+        balanced_copy_idx += over_sample_idx
     np.random.shuffle(balanced_copy_idx)
 
-    data_train=X[balanced_copy_idx]
-    labels_train=y[balanced_copy_idx]
-    if  ((len(data_train)) == (sample_size*len(uniq_levels))):
-        print('number of sampled example ', sample_size*len(uniq_levels), 'number of sample per class ', sample_size, ' #classes: ', len(list(set(uniq_levels))))
+    data_train = X[balanced_copy_idx]
+    labels_train = y[balanced_copy_idx]
+    if ((len(data_train)) == (sample_size * len(uniq_levels))):
+        print('number of sampled example ', sample_size * len(uniq_levels), 'number of sample per class ', sample_size,
+              ' #classes: ', len(list(set(uniq_levels))))
     else:
         print('number of samples is wrong ')
 
@@ -150,6 +152,7 @@ def medianDistance(dataset):
     pwDistance = ecd(dataset)
     return np.median(np.asarray(pwDistance))
 
+
 if __name__ == "__main__":
-    data = np.asarray([[3,4],[1,2]])
+    data = np.asarray([[3, 4], [1, 2]])
     print(normalize_square_row(data))

@@ -154,16 +154,16 @@ class MEDA:
             left = np.dot(E + self.lamb * M + self.rho * L, K) + self.eta * np.eye(ns + nt, ns + nt)
             Beta = np.dot(np.linalg.inv(left), np.dot(E, YY))
 
-            #For testing
+            # For testing
             Ytest = np.copy(YY)
             for c in range(1, C + 1):
                 yy = Cls == c
                 inds = np.where(yy == True)
-                inds = [item+ns for item in inds]
+                inds = [item + ns for item in inds]
                 Ytest[inds, c - 1] = 1
             SRM = np.linalg.norm(np.dot(Ytest.T - np.dot(Beta.T, K), E)) \
-                  + self.eta*np.linalg.multi_dot([Beta.T, K, Beta]).trace()
-            MMD = self.lamb*np.linalg.multi_dot([Beta.T, np.linalg.multi_dot([K, M, K]), Beta]).trace()
+                  + self.eta * np.linalg.multi_dot([Beta.T, K, Beta]).trace()
+            MMD = self.lamb * np.linalg.multi_dot([Beta.T, np.linalg.multi_dot([K, M, K]), Beta]).trace()
             fitness = SRM + MMD
             # print(fitness, SRM, MMD)
 

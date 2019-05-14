@@ -23,7 +23,7 @@ import Core
 # Setting from Problem
 NBIT = (len(Core.Xs) + len(Core.Xt)) * Core.C
 NGEN = 1000
-NPART = 100#NBIT if NBIT < 100 else 100
+NPART = 100  # NBIT if NBIT < 100 else 100
 
 # PSO parameters
 w = 0.7298
@@ -31,7 +31,7 @@ c1 = 1.49618
 c2 = 1.49618
 pos_max = 10.0
 pos_min = -10.0
-s_max = (pos_max - pos_min)/30
+s_max = (pos_max - pos_min) / 30
 s_min = -s_max
 
 creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
@@ -44,11 +44,11 @@ def generate(size, pmin, pmax, smin, smax):
     # create position
     position = np.random.uniform(pmin, pmax, size)
 
-    #refine the position
+    # refine the position
     beta = np.copy(position)
     beta = np.reshape(beta, (len(Core.Xs) + len(Core.Xt), Core.C))
     beta = FitnessFunction.refine(beta)
-    position = np.reshape(beta, ((len(Core.Xs) + len(Core.Xt))*Core.C),)
+    position = np.reshape(beta, ((len(Core.Xs) + len(Core.Xt)) * Core.C), )
 
     part = creator.Particle(position)
     # create speed
@@ -112,7 +112,7 @@ def main(args):
     gbest_try = False
 
     for g in range(NGEN):
-        print('==============Gen %d===============' %g)
+        print('==============Gen %d===============' % g)
 
         gbest_update = False
         for part in pop:
@@ -179,4 +179,5 @@ def main(args):
 
 if __name__ == "__main__":
     import sys
+
     main(sys.argv[1:])

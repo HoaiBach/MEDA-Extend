@@ -30,14 +30,14 @@ def fitness_function_test(Beta, Yt_pseu):
         else:
             e[np.isinf(e)] = 0
         N = N + np.dot(e, e.T)
-    M = 0.5*Core.M0 + 0.5*N
+    M = 0.5 * Core.M0 + 0.5 * N
     M = M / np.linalg.norm(M, 'fro')
 
     SRM = np.linalg.norm(np.dot(Ytest.T - np.dot(Beta.T, Core.K), Core.A)) \
           + Core.eta * np.linalg.multi_dot([Beta.T, Core.K, Beta]).trace()
     MMD = Core.lamb * np.linalg.multi_dot([Beta.T, np.linalg.multi_dot([Core.K, M, Core.K]), Beta]).trace()
 
-    return SRM+MMD
+    return SRM + MMD
 
 
 def fitness_function(Beta):
@@ -68,14 +68,14 @@ def fitness_function(Beta):
         else:
             e[np.isinf(e)] = 0
         N = N + np.dot(e, e.T)
-    M = 0.5*Core.M0 + 0.5*N
+    M = 0.5 * Core.M0 + 0.5 * N
     M = M / np.linalg.norm(M, 'fro')
 
     SRM = np.linalg.norm(np.dot(Ytest.T - np.dot(Beta.T, Core.K), Core.A)) \
           + Core.eta * np.linalg.multi_dot([Beta.T, Core.K, Beta]).trace()
     MMD = Core.lamb * np.linalg.multi_dot([Beta.T, np.linalg.multi_dot([Core.K, M, Core.K]), Beta]).trace()
 
-    return SRM+MMD
+    return SRM + MMD
 
 
 def refine(beta):
@@ -114,7 +114,7 @@ def fitness_cheat(beta):
     Cls = Cls[Core.ns:]
     Core.Yt_pseu = Cls
     acc = np.mean(Core.Yt_pseu == Core.Yt)
-    return 1-acc
+    return 1 - acc
 
 
 if __name__ == "__main__":

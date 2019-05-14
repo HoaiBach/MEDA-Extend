@@ -87,15 +87,20 @@ A = 0
 e = 0
 L = 0
 
+toolbox = base.Toolbox()
+archive = []
+archive_size_min = 10
+random_rate = 00.5
 
-def fit_predict(Yt_pseu):
+
+def fit_predict(Yt_input):
     """
     Calculate the fitness function of a label array of target instances
     :param Yt_pseu: the pseudolabel of target instances, which are in a chromosome.
     :return:
     """
     # Based on the Yt_pseu, calculate the optimal beta.
-    Yt_pseu = np.array(Yt_pseu)
+    Yt_pseu = np.array(np.copy(Yt_input))
     mu = 0.5
     N = 0
     for c in range(1, C + 1):
@@ -139,7 +144,7 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     Running GA algorithms, where each individual is a set of target pseudo labels.
     :return: the best solution of GAs.
     """
-    global ns, nt, C, Xs, Ys, Xt, Yt, YY
+    global ns, nt, C, Xs, Ys, Xt, Yt, YY, K, A, e, M0, archive
     Xs = Xsource
     Ys = Ysource
     Xt = Xtarget
@@ -153,9 +158,10 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     Xs_new, Xt_new = Xs_new.T, Xt_new.T
     X = np.hstack((Xs_new, Xt_new))
     X /= np.linalg.norm(X, axis=0)
+    Xs = X[:, :ns].T
+    Xt = X[:, ns:].T
 
     # build some matrices that are not changed
-    global K, A, e, M0
     K = kernel(kernel_type, X, X2=None, gamma=gamma)
     A = np.diagflat(np.vstack((np.ones((ns, 1)), np.zeros((nt, 1)))))
     e = np.vstack((1.0 / ns * np.ones((ns, 1)), -1.0 / nt * np.ones((nt, 1))))
@@ -169,11 +175,11 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
 
     # parameters for GA
     N_BIT = nt
-    N_GEN = 30
-    N_IND = 100
-    MUTATION_RATE = 1.0 / N_BIT
-    CXPB = 0.8
-    MPB = 0.2
+    N_GEN = 10
+    N_IND = 10
+    MUTATION_RATE = 0.1
+    CXPB = 0.9
+    MPB = 0.1
 
     pos_min = 1
     pos_max = C
@@ -182,7 +188,6 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     creator.create("Ind", list, fitness=creator.FitnessMin)
     creator.create("Pop", list)
 
-    toolbox = base.Toolbox()
     # for creating the population
     toolbox.register("bit", random.randint, a=pos_min, b=pos_max)
     toolbox.register("ind", tools.initRepeat, creator.Ind, toolbox.bit, n=N_BIT)
@@ -191,7 +196,7 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     toolbox.register("evaluate", fit_predict)
     # for genetic operators
     toolbox.register("select", tools.selTournament, tournsize=3)
-    toolbox.register("crossover", tools.cxTwoPoint)
+    toolbox.register("crossover", tools.cxUniform, indpb=0.5 )
     toolbox.register("mutate", tools.mutUniformInt, low=pos_min, up=pos_max,
                      indpb=MUTATION_RATE)
     # pool = multiprocessing.Pool(4)
@@ -199,7 +204,6 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
 
     # evolutionary process
     pop = toolbox.pop(n=N_IND)
-    archive = []
 
     classifiers = list([])
     classifiers.append(KNeighborsClassifier(1))
@@ -214,17 +218,18 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
         RandomForestClassifier(max_depth=5, n_estimators=10, random_state=np.random.randint(2 ** 10)))
     classifiers.append(AdaBoostClassifier(random_state=np.random.randint(2 ** 10)))
 
+    step = N_IND/len(classifiers)
     for ind_index, classifier in enumerate(classifiers):
         classifier.fit(Xs, Ys)
         Yt_pseu = classifier.predict(Xt)
         for bit_idex, value in enumerate(Yt_pseu):
-            pop[ind_index][bit_idex] = value
+            pop[ind_index*step][bit_idex] = value
 
     start_results = toolbox.map(toolbox.evaluate, pop)
     for ind, result in zip(pop, start_results):
         new_pos, fit = result
-        for index in range(len(ind)):
-            ind[index] = new_pos[index]
+        # for index in range(len(ind)):
+        #     ind[index] = new_pos[index]
         ind.fitness.values = fit,
 
     hof = tools.HallOfFame(maxsize=1)
@@ -232,35 +237,37 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
 
     for g in range(N_GEN):
         print("=========== Iteration %d ===========" % g)
-
         # selection
+
         offspring = toolbox.select(pop, len(pop))
         offspring = map(toolbox.clone, offspring)
 
-        # applying crossover
+        # # applying crossover
         for c1, c2 in zip(offspring[::2], offspring[1::2]):
             if np.random.rand() < CXPB:
                 toolbox.crossover(c1, c2)
                 del c1.fitness.values
                 del c2.fitness.values
-
-        # applying mutation
+        # # applying mutation
         for mutant in offspring:
             if np.random.rand() < MPB:
                 toolbox.mutate(mutant)
                 del mutant.fitness.values
-
         # evaluate the individuals with an invalid fitness
-        invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
-        results = toolbox.map(toolbox.evaluate, invalid_ind)
-        for ind, result in zip(invalid_ind, results):
+        # invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
+        # results = toolbox.map(toolbox.evaluate, invalid_ind)
+
+        # if no crossover and mutation attend, we must evaluate all the individuals
+        results = toolbox.map(toolbox.evaluate, offspring)
+        for ind_index, result in enumerate(results):
+            ind = offspring[ind_index]
             new_pos, fit = result
 
-            test_equal = False
-            # for index in range(len(ind)):
-            #     if ind[index] != new_pos[index]:
-            #         test_equal = False
-            #         break
+            test_equal = True
+            for index in range(len(ind)):
+                if ind[index] != new_pos[index]:
+                    test_equal = False
+                    break
 
             if not test_equal:
                 for index in range(len(ind)):
@@ -272,11 +279,12 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
                 # store the solution in the archive set
                 # reinitialize the new position
                 archive.append(new_pos)
-                ind = toolbox.ind()
+                print(len(archive))
+                ind = re_initialize()
                 new_pos, fit = fit_predict(ind)
-                for index in range(len(ind)):
-                    ind[index] = new_pos[index]
-                ind.fitness.values = fit,
+                for index in range(len(new_pos)):
+                    offspring[ind_index][index] = new_pos[index]
+                offspring[ind_index].fitness.values = fit,
 
         # The population is entirely replaced by the offspring
         pop[:] = tools.selBest(offspring + list(hof), len(pop))
@@ -286,6 +294,7 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
 
     print("=========== Final result============")
     best_ind = tools.selBest(pop, 1)[0]
+    # new_pos, fit = fit_predict(best_ind)
     acc = np.mean(best_ind == Yt)
     print("Accuracy of the best individual: %f" % acc)
 
@@ -325,6 +334,21 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
             vote_label.append(label)
         acc = np.mean(vote_label == Yt)
         print("Accuracy of the archive: %f" % acc)
+
+
+def re_initialize():
+    new_ind = toolbox.ind()
+    if len(archive) < archive_size_min or np.random.rand() <= random_rate:
+        return new_ind
+    else:
+        pseu_labels = []
+        for ins_index in range(nt):
+            list_labels = [archive[i][ins_index] for i in range(len(archive))]
+            ins_label = np.random.choice(np.unique(list_labels))
+            pseu_labels.append(ins_label)
+        for index, label in enumerate(pseu_labels):
+            new_ind[index] = label
+        return new_ind
 
 
 if __name__ == '__main__':

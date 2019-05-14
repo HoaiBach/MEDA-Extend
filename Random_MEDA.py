@@ -102,12 +102,11 @@ class Random_MEDA:
         self.L = 0
         # self.Yt_pseu = None
 
-
         self.init_op = init_op  # 0-random, 1- KNN (diff K), 2-10 diff classifiers
-        self.re_init_op = re_init_op # 0-random, 1-using best, 2-using existing archive
+        self.re_init_op = re_init_op  # 0-random, 1-using best, 2-using existing archive
 
         self.run = run
-        seed = 1617*run
+        seed = 1617 * run
         np.random.seed(seed)
         self.archive_size = archive_size
         self.random_rate = random_rate
@@ -121,7 +120,7 @@ class Random_MEDA:
         self.ns, self.nt = Xs.shape[0], Xt.shape[0]
         self.C = len(np.unique(Ys))
 
-        f_out = open(str(self.run)+'.txt', 'w')
+        f_out = open(str(self.run) + '.txt', 'w')
         toPrint = ("Random_rate: %f, archive size: %d\n" % (self.random_rate, self.archive_size))
 
         start = time.time()
@@ -147,8 +146,8 @@ class Random_MEDA:
             self.YY[ind, c - 1] = 1
         self.YY = np.vstack((self.YY, np.zeros((self.nt, self.C))))
 
-        N = 100
-        GEN = 30
+        N = 10
+        GEN = 10
         pos_min = -10
         pos_max = 10
         pop = []
@@ -157,7 +156,7 @@ class Random_MEDA:
         pop_fit = [sys.float_info.max] * N
         pop_src_acc = [sys.float_info.max] * N
         pop_tar_acc = [sys.float_info.max] * N
-        pop_label = [[1]]*N
+        pop_label = [[1]] * N
         NBIT = (self.ns + self.nt) * self.C
 
         # initialization
@@ -170,7 +169,7 @@ class Random_MEDA:
         elif self.init_op == 1:
             # using different KNN
             for i in range(N):
-                classifier = KNeighborsClassifier(2*i+1)
+                classifier = KNeighborsClassifier(2 * i + 1)
                 beta = self.initialize_with_classifier(classifier)
                 pop.append(beta)
         elif self.init_op == 2:
@@ -179,13 +178,14 @@ class Random_MEDA:
             classifiers.append(KNeighborsClassifier(1))
             classifiers.append(KNeighborsClassifier(3))
             classifiers.append(KNeighborsClassifier(5))
-            classifiers.append(SVC(kernel="linear", C=0.025, random_state=np.random.randint(2**10)))
-            classifiers.append(SVC(kernel="rbf", C=1, gamma=2, random_state=np.random.randint(2**10)))
-            classifiers.append(GaussianProcessClassifier(1.0 * RBF(1.0), random_state=np.random.randint(2**10)))
+            classifiers.append(SVC(kernel="linear", C=0.025, random_state=np.random.randint(2 ** 10)))
+            classifiers.append(SVC(kernel="rbf", C=1, gamma=2, random_state=np.random.randint(2 ** 10)))
+            classifiers.append(GaussianProcessClassifier(1.0 * RBF(1.0), random_state=np.random.randint(2 ** 10)))
             classifiers.append(GaussianNB())
-            classifiers.append(DecisionTreeClassifier(max_depth=5, random_state=np.random.randint(2**10)))
-            classifiers.append(RandomForestClassifier(max_depth=5, n_estimators=10, random_state=np.random.randint(2**10)))
-            classifiers.append(AdaBoostClassifier(random_state=np.random.randint(2**10)))
+            classifiers.append(DecisionTreeClassifier(max_depth=5, random_state=np.random.randint(2 ** 10)))
+            classifiers.append(
+                RandomForestClassifier(max_depth=5, n_estimators=10, random_state=np.random.randint(2 ** 10)))
+            classifiers.append(AdaBoostClassifier(random_state=np.random.randint(2 ** 10)))
             assert len(classifiers) == N
             for i in range(N):
                 beta = self.initialize_with_classifier(classifiers[i])
@@ -213,16 +213,22 @@ class Random_MEDA:
         for g in range(GEN):
             toPrint += ('==============Gen %d===============\n' % g)
             for index, ind in enumerate(pop):
+
                 # refine the position using gradient descent
-                new_position, new_fitness, new_mmd, new_srm, new_src_acc, new_tar_acc, new_label = self.fit_predict(pop[index])
+                new_position, new_fitness, new_mmd, new_srm, new_src_acc, new_tar_acc, new_label = self.fit_predict(
+                    pop[index])
                 toPrint += ("%d: %f, %f, %f\n" % (index, new_fitness, new_src_acc, new_tar_acc))
+
+                # create new position based on crossover and mutation
 
                 # if the fitness is not improved, store the previous position in the archive
                 # randomly create a new position based on the best
                 # store the current position to archive
                 if pop_fit[index] <= new_fitness:
-                    new_position = self.re_initialize(pop, best, pos_min, pos_max, archive_label, strategy=self.re_init_op)
-                    new_position, new_fitness, new_mmd, new_srm, new_src_acc, new_tar_acc, new_label = self.fit_predict(new_position)
+                    new_position = self.re_initialize(pop, best, pos_min, pos_max, archive_label,
+                                                      strategy=self.re_init_op)
+                    new_position, new_fitness, new_mmd, new_srm, new_src_acc, new_tar_acc, new_label = self.fit_predict(
+                        new_position)
                     toPrint += ("Reset %d: %f, %f, %f\n" % (index, new_fitness, new_src_acc, new_tar_acc))
 
                     # append the old ind
@@ -261,7 +267,7 @@ class Random_MEDA:
         archive_src_acc.append(best_src_acc)
         archive_tar_acc.append(best_tar_acc)
 
-        time_eslape = (time.time()-start)
+        time_eslape = (time.time() - start)
         nd_indices = self.get_non_dominated(archive, archive_srm, archive_mmd)
 
         all_labels = []
@@ -271,9 +277,9 @@ class Random_MEDA:
         for index in class_indices:
             ind = archive[index]
             toPrint += ("%d: %f, %f, %f, %f, %f\n"
-                  % (index, archive_fit[index], archive_srm[index],
-                     archive_mmd[index], archive_src_acc[index],
-                     archive_tar_acc[index]))
+                        % (index, archive_fit[index], archive_srm[index],
+                           archive_mmd[index], archive_src_acc[index],
+                           archive_tar_acc[index]))
             F = np.dot(self.K, ind)
             Y_pseudo = np.argmax(F, axis=1) + 1
             Yt_pseu = Y_pseudo[self.ns:].tolist()
@@ -286,7 +292,7 @@ class Random_MEDA:
             label = np.argmax(counts)
             vote_label.append(label)
         acc = np.mean(vote_label == Yt)
-        toPrint += ("Accuracy archive:" + str(acc)+"\n")
+        toPrint += ("Accuracy archive:" + str(acc) + "\n")
 
         all_labels = []
         toPrint += ("========From non-dominated========\n")
@@ -294,9 +300,9 @@ class Random_MEDA:
         for index in class_indices:
             ind = archive[index]
             toPrint += ("%d: %f, %f, %f, %f, %f\n"
-              % (index, archive_fit[index], archive_srm[index],
-                 archive_mmd[index], archive_src_acc[index],
-                 archive_tar_acc[index]))
+                        % (index, archive_fit[index], archive_srm[index],
+                           archive_mmd[index], archive_src_acc[index],
+                           archive_tar_acc[index]))
             F = np.dot(self.K, ind)
             Y_pseudo = np.argmax(F, axis=1) + 1
             Yt_pseu = Y_pseudo[self.ns:].tolist()
@@ -309,15 +315,15 @@ class Random_MEDA:
             label = np.argmax(counts)
             vote_label.append(label)
         acc = np.mean(vote_label == Yt)
-        toPrint += ("Accuracy non-dominated:" + str(acc)+"\n")
+        toPrint += ("Accuracy non-dominated:" + str(acc) + "\n")
 
         toPrint += ("===================================\n")
         F = np.dot(self.K, best)
         Y_pseudo = np.argmax(F, axis=1) + 1
         Yt_pseu = Y_pseudo[self.ns:].tolist()
         acc = np.mean(Yt_pseu == Yt)
-        toPrint += ("Accuracy best:" + str(acc)+"\n")
-        toPrint += ("Execution time: "+str(time_eslape)+"\n")
+        toPrint += ("Accuracy best:" + str(acc) + "\n")
+        toPrint += ("Execution time: " + str(time_eslape) + "\n")
 
         f_out.write(toPrint)
         f_out.close()
@@ -459,18 +465,18 @@ class Random_MEDA:
 
 if __name__ == '__main__':
     run = int(sys.argv[1])
-    init_op = 0 # 0-random, 1- KNN (diff K), 2-10 diff classifiers
-    re_init_op = 3 # 0-random, 1-using best, 2-label, 3- mixed random label
-    archive_size = 10 # size of archive to be ok for using in creating new (using with label/mix label and random)
-    random_rate = 0.5 # arg[4] can be 1,2,3,.., 10 -> 0.1, 0.2, 0.3,...,1.0
+    init_op = 2  # 0-random, 1- KNN (diff K), 2-10 diff classifiers
+    re_init_op = 3  # 0-random, 1-using best, 2-label, 3- mixed random label
+    archive_size = 10  # size of archive to be ok for using in creating new (using with label/mix label and random)
+    random_rate = 0.5  # arg[4] can be 1,2,3,.., 10 -> 0.1, 0.2, 0.3,...,1.0
 
-    source = np.genfromtxt("Source", delimiter=",")
+    source = np.genfromtxt("data/Source", delimiter=",")
     m = source.shape[1] - 1
     Xs = source[:, 0:m]
     Ys = np.ravel(source[:, m:m + 1])
     Ys = np.array([int(label) for label in Ys])
 
-    target = np.genfromtxt("Target", delimiter=",")
+    target = np.genfromtxt("data/Target", delimiter=",")
     Xt = target[:, 0:m]
     Yt = np.ravel(target[:, m:m + 1])
     Yt = np.array([int(label) for label in Yt])
@@ -480,7 +486,6 @@ if __name__ == '__main__':
                          archive_size=archive_size, random_rate=random_rate,
                          run=run)
     r_meda.evolve(Xs, Ys, Xt, Yt)
-
 
     # source = np.genfromtxt("Source", delimiter=",")
     # m = source.shape[1] - 1

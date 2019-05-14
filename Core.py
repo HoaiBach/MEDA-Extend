@@ -4,7 +4,7 @@ import GFK
 import Utility
 
 src_data = np.genfromtxt("data/Source", delimiter=",")
-no_features = len(src_data[0])-1
+no_features = len(src_data[0]) - 1
 Xs = src_data[:, 0:no_features]
 Ys = np.ravel(src_data[:, no_features:no_features + 1])
 Ys = np.array([int(label) for label in Ys])
@@ -16,7 +16,7 @@ Yt = np.ravel(tar_data[:, no_features:no_features + 1])
 Yt = np.array([int(label) for label in Yt])
 
 ns, nt = Xs.shape[0], Xt.shape[0]
-n = ns+nt
+n = ns + nt
 
 YY = np.zeros((ns, C))
 for c in range(1, C + 1):

@@ -23,14 +23,14 @@ NBIT = Core.no_features
 NGEN = 100
 NPART = NBIT if NBIT < 100 else 100
 is_low = 0
-is_up = 10.0/NBIT
-ustks_low = NGEN/100.0
-ustks_up = 8*NGEN/100.0
+is_up = 10.0 / NBIT
+ustks_low = NGEN / 100.0
+ustks_up = 8 * NGEN / 100.0
 pg_rate = 2.0
 threshold = 0.5
 
 i_stick = is_up
-i_gbest = (1-i_stick)/(pg_rate+1)
+i_gbest = (1 - i_stick) / (pg_rate + 1)
 i_pbest = pg_rate * i_gbest
 ustks = ustks_low
 
@@ -49,7 +49,7 @@ def generate(size):
 
 def update_particle(part, best):
     # find flipping probability
-    stick_part = map(lambda x: i_stick*(1-x), part.stk)
+    stick_part = map(lambda x: i_stick * (1 - x), part.stk)
     diff_pbest = map(operator.abs, map(operator.sub, part.best, part))
     pbest_part = map(lambda x: i_pbest * x, diff_pbest)
     diff_gbest = map(operator.abs, map(operator.sub, best, part))
@@ -70,7 +70,7 @@ def update_particle(part, best):
             part.stk[i] = 1
         else:
             # if the bit is not flipped, update stickiness
-            part.stk[i] = max(0, part.stk[i] - 1.0/ustks)
+            part.stk[i] = max(0, part.stk[i] - 1.0 / ustks)
 
 
 def evaluate(particle):
@@ -117,7 +117,7 @@ def normalize_weight():
     if src_err == 0:
         FitnessFunction.srcWeight = 0
     else:
-        FitnessFunction.srcWeight = 1.0/abs(src_err)
+        FitnessFunction.srcWeight = 1.0 / abs(src_err)
 
         def normalize_weight():
             # Make sure that all the weights are not 0, so all components are evaluated
@@ -188,7 +188,7 @@ def main(args):
     FitnessFunction.tarVersion = tar_index
     FitnessFunction.srcVersion = 1
 
-    filename = "iteration"+str(args[0])+".txt"
+    filename = "iteration" + str(args[0]) + ".txt"
     output_file = open(filename, 'w+')
 
     time_start = time.clock()
@@ -265,14 +265,14 @@ def main(args):
                                                          classifier=Core.classifier,
                                                          testing_feature=tar_feature, testing_label=Core.Yt)
         to_write += ("  Accuracy on unlabel target: " + str(acc) + "\n")
-        to_write += "  Position:"+str(best)+"\n"
+        to_write += "  Position:" + str(best) + "\n"
         print(src_err, acc, best.fitness.values[0])
 
         # update the parameters
-        i_stick = is_up - (is_up - is_low)*(g+1)/NGEN
-        i_gbest = (1-i_stick)/(pg_rate+1)
-        i_pbest = pg_rate*i_gbest
-        ustks = ustks_low + (ustks_up-ustks_low)*(g+1)/NGEN
+        i_stick = is_up - (is_up - is_low) * (g + 1) / NGEN
+        i_gbest = (1 - i_stick) / (pg_rate + 1)
+        i_pbest = pg_rate * i_gbest
+        ustks = ustks_low + (ustks_up - ustks_low) * (g + 1) / NGEN
 
     time_elapsed = (time.clock() - time_start)
     to_write += "----Final -----\n"
@@ -293,11 +293,11 @@ def main(args):
                                                      testing_feature=tar_feature, testing_label=Core.Yt)
     to_write += ("Accuracy of the core classifier: " + str(acc) + "\n")
     to_write += ("Accuracy on the target (No TL) (core classifier): %f\n\n" % (
-                    1.0 - FitnessFunction.classification_error(training_feature=Core.ori_src_feature,
-                                                               training_label=Core.Ys,
-                                                               classifier=Core.classifier,
-                                                               testing_feature=Core.ori_tar_feature,
-                                                               testing_label=Core.Yt)))
+            1.0 - FitnessFunction.classification_error(training_feature=Core.ori_src_feature,
+                                                       training_label=Core.Ys,
+                                                       classifier=Core.classifier,
+                                                       testing_feature=Core.ori_tar_feature,
+                                                       testing_label=Core.Yt)))
     new_classifier = LinearSVC(random_state=1617)
     acc = 1.0 - FitnessFunction.classification_error(training_feature=src_feature, training_label=Core.Ys,
                                                      classifier=new_classifier,
@@ -344,4 +344,5 @@ def main(args):
 
 if __name__ == "__main__":
     import sys
+
     main(sys.argv[1:])
