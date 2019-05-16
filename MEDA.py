@@ -7,7 +7,7 @@
 import numpy as np
 import scipy.io
 from sklearn import metrics
-from sklearn import svm
+from sklearn import svm, neighbors
 from sklearn.neighbors import KNeighborsClassifier
 import FitnessFunction
 
@@ -122,7 +122,7 @@ class MEDA:
         YY = np.vstack((YY, np.zeros((nt, C))))
 
         X /= np.linalg.norm(X, axis=0)
-        L = 0  # Graph Laplacian is on the way...
+        L = laplacian_matrix(X.T, self.p)
         knn_clf = KNeighborsClassifier(n_neighbors=1)
         knn_clf.fit(X[:, :ns].T, Ys.ravel())
         Cls = knn_clf.predict(X[:, ns:].T)
@@ -178,14 +178,44 @@ class MEDA:
         return acc, Cls, list_acc
 
 
+def laplacian_matrix(data, k):
+    """
+    :param data: containing data points,
+    :param k: the number of neighbors considered (this distance metric is cosine,
+    and the weights are measured by cosine)
+    :return:
+    """
+    nn = neighbors.NearestNeighbors(n_neighbors=k, algorithm='brute', metric='cosine')
+    nn.fit(data)
+    dist, nn = nn.kneighbors(return_distance=True)
+    sim = np.zeros((len(data), len(data)))
+    for ins_index in range(len(sim)):
+        dist_row = dist[ins_index]
+        nn_row = nn[ins_index]
+        for dist_value, ind_index in zip(dist_row, nn_row):
+            sim[ins_index][ind_index] = 1.0 - dist_value
+            sim[ind_index][ins_index] = 1.0 - dist_value
+    for i in range(len(sim)):
+        sim[i][i] = 1.0
+
+    S = [np.sum(row) for row in sim]
+
+    for i in range(len(sim)):
+        sim[i] = [sim[i][j]/(S[i]*S[j])**0.5 for j in range(len(sim))]
+
+    L = np.identity(len(sim)) - sim
+    return L
+
+
 if __name__ == '__main__':
-    datasets = np.array(['GasSensor1-4', 'GasSensor1-2', 'GasSensor1-3',
-                         'GasSensor1-5', 'GasSensor1-6', 'GasSensor1-7',
-                         'GasSensor1-8', 'GasSensor1-9', 'GasSensor1-10',
-                         'SURFa-c', 'SURFa-d', 'SURFa-w', 'SURFc-a',
-                         'SURFc-d', 'SURFc-w', 'SURFd-a', 'SURFd-c',
-                         'SURFd-w', 'SURFw-a', 'SURFw-c', 'SURFw-d',
-                         'MNIST-USPS', 'USPS-MNIST'])
+    datasets = np.array(['SURFc-d'])
+    # datasets = np.array(['GasSensor1-4', 'GasSensor1-2', 'GasSensor1-3',
+    #                      'GasSensor1-5', 'GasSensor1-6', 'GasSensor1-7',
+    #                      'GasSensor1-8', 'GasSensor1-9', 'GasSensor1-10',
+    #                      'SURFa-c', 'SURFa-d', 'SURFa-w', 'SURFc-a',
+    #                      'SURFc-d', 'SURFc-w', 'SURFd-a', 'SURFd-c',
+    #                      'SURFd-w', 'SURFw-a', 'SURFw-c', 'SURFw-d',
+    #                      'MNIST-USPS', 'USPS-MNIST'])
 
     for dataset in datasets:
         source = np.genfromtxt("/home/nguyenhoai2/Grid/data/TransferLearning/UnPairs/" + dataset + "/Source",
@@ -202,7 +232,7 @@ if __name__ == '__main__':
         Yt = np.array([int(label) for label in Yt])
 
         file = open("/home/nguyenhoai2/Grid/results/R-MEDA/" + dataset + "/MEDA_iteration.txt", "w")
-        meda = MEDA(kernel_type='rbf', dim=20, lamb=10, rho=1.0, eta=0.1, p=10, gamma=0.5, T=100, out=file)
+        meda = MEDA(kernel_type='rbf', dim=20, lamb=10, rho=1.0, eta=0.1, p=10, gamma=0.5, T=10, out=file)
         acc, ypre, list_acc = meda.fit_predict(Xs, Ys, Xt, Yt)
         file.write(str(acc))
         file.close()

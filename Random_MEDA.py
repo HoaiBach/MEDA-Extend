@@ -5,7 +5,7 @@
 """
 
 import numpy as np
-from sklearn import metrics
+from sklearn import metrics, neighbors
 from sklearn import svm
 from sklearn.neighbors import KNeighborsClassifier
 import sys
@@ -461,6 +461,35 @@ class Random_MEDA:
         acc_t = np.mean(Yt_pseu == self.Yt)
 
         return Beta, fitness, MMD, SRM, acc_s, acc_t, Yt_pseu
+
+
+def laplacian_matrix(data, k):
+    """
+    :param data: containing data points,
+    :param k: the number of neighbors considered (this distance metric is cosine,
+    and the weights are measured by cosine)
+    :return:
+    """
+    nn = neighbors.NearestNeighbors(n_neighbors=k, algorithm='brute', metric='cosine')
+    nn.fit(data)
+    dist, nn = nn.kneighbors(return_distance=True)
+    sim = np.zeros((len(data), len(data)))
+    for ins_index in range(len(sim)):
+        dist_row = dist[ins_index]
+        nn_row = nn[ins_index]
+        for dist_value, ind_index in zip(dist_row, nn_row):
+            sim[ins_index][ind_index] = 1.0 - dist_value
+            sim[ind_index][ins_index] = 1.0 - dist_value
+    for i in range(len(sim)):
+        sim[i][i] = 1.0
+
+    S = [np.sum(row) for row in sim]
+
+    for i in range(len(sim)):
+        sim[i] = [sim[i][j]/(S[i]*S[j])**0.5 for j in range(len(sim))]
+
+    L = np.identity(len(sim)) - sim
+    return L
 
 
 if __name__ == '__main__':

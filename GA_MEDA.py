@@ -86,7 +86,6 @@ M0 = 0
 K = 0
 A = 0
 e = 0
-L = 0
 
 toolbox = base.Toolbox()
 archive = []
@@ -158,7 +157,7 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     Running GA algorithms, where each individual is a set of target pseudo labels.
     :return: the best solution of GAs.
     """
-    global ns, nt, C, Xs, Ys, Xt, Yt, YY, K, A, e, M0, archive
+    global ns, nt, C, Xs, Ys, Xt, Yt, YY, K, A, e, M0, L, archive
     Xs = Xsource
     Ys = Ysource
     Xt = Xtarget
@@ -180,6 +179,7 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     A = np.diagflat(np.vstack((np.ones((ns, 1)), np.zeros((nt, 1)))))
     e = np.vstack((1.0 / ns * np.ones((ns, 1)), -1.0 / nt * np.ones((nt, 1))))
     M0 = e * e.T * C
+    L = laplacian_matrix(X.T, p)
 
     YY = np.zeros((ns, C))
     for c in range(1, C + 1):
@@ -192,8 +192,8 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     N_GEN = 10
     N_IND = 30
     MUTATION_RATE = 1.0/N_BIT
-    CXPB = 0.2
-    MPB = 0.8
+    CXPB = 0.5
+    MPB = 0.5
 
     pos_min = 1
     pos_max = C
@@ -219,24 +219,24 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     # initialize some individuals by predefined classifiers
     pop = toolbox.pop(n=N_IND)
 
-    # classifiers = list([])
-    # classifiers.append(KNeighborsClassifier(1))
-    # classifiers.append(SVC(kernel="linear", C=0.025, random_state=np.random.randint(2 ** 10)))
-    # classifiers.append(GaussianProcessClassifier(1.0 * RBF(1.0), random_state=np.random.randint(2 ** 10)))
-    # classifiers.append(KNeighborsClassifier(3))
-    # classifiers.append(SVC(kernel="rbf", C=1, gamma=2, random_state=np.random.randint(2 ** 10)))
-    # classifiers.append(DecisionTreeClassifier(max_depth=5, random_state=np.random.randint(2 ** 10)))
-    # classifiers.append(KNeighborsClassifier(5))
-    # classifiers.append(GaussianNB())
-    # classifiers.append(RandomForestClassifier(max_depth=5, n_estimators=10, random_state=np.random.randint(2 ** 10)))
-    # classifiers.append(AdaBoostClassifier(random_state=np.random.randint(2 ** 10)))
-    #
-    # step = N_IND/len(classifiers)
-    # for ind_index, classifier in enumerate(classifiers):
-    #     classifier.fit(Xs, Ys)
-    #     Yt_pseu = classifier.predict(Xt)
-    #     for bit_idex, value in enumerate(Yt_pseu):
-    #         pop[ind_index*step][bit_idex] = value
+    classifiers = list([])
+    classifiers.append(KNeighborsClassifier(1))
+    classifiers.append(SVC(kernel="linear", C=0.025, random_state=np.random.randint(2 ** 10)))
+    classifiers.append(GaussianProcessClassifier(1.0 * RBF(1.0), random_state=np.random.randint(2 ** 10)))
+    classifiers.append(KNeighborsClassifier(3))
+    classifiers.append(SVC(kernel="rbf", C=1, gamma=2, random_state=np.random.randint(2 ** 10)))
+    classifiers.append(DecisionTreeClassifier(max_depth=5, random_state=np.random.randint(2 ** 10)))
+    classifiers.append(KNeighborsClassifier(5))
+    classifiers.append(GaussianNB())
+    classifiers.append(RandomForestClassifier(max_depth=5, n_estimators=10, random_state=np.random.randint(2 ** 10)))
+    classifiers.append(AdaBoostClassifier(random_state=np.random.randint(2 ** 10)))
+
+    step = N_IND/len(classifiers)
+    for ind_index, classifier in enumerate(classifiers):
+        classifier.fit(Xs, Ys)
+        Yt_pseu = classifier.predict(Xt)
+        for bit_idex, value in enumerate(Yt_pseu):
+            pop[ind_index*step][bit_idex] = value
 
     # evaluate the initialized populations
     start_results = toolbox.map(toolbox.evaluate, pop)
@@ -408,11 +408,12 @@ def laplacian_matrix(data, k):
     for i in range(len(sim)):
         sim[i][i] = 1.0
 
-    D = np.zeros((sim.shape[0], sim.shape[1]))
-    for row_index in range(len(sim)):
-        D[row_index][row_index] = np.sum(sim[row_index])
+    S = [np.sum(row) for row in sim]
 
-    L = D-sim
+    for i in range(len(sim)):
+        sim[i] = [sim[i][j]/(S[i]*S[j])**0.5 for j in range(len(sim))]
+
+    L = np.identity(len(sim)) - sim
     return L
 
 
