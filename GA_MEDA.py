@@ -2,7 +2,8 @@ import random
 
 import numpy as np
 from deap import base, creator, tools
-from sklearn import svm, metrics
+from sklearn import svm, metrics, neighbors
+from scipy.spatial.distance import pdist,squareform
 
 import GFK
 
@@ -90,7 +91,7 @@ L = 0
 toolbox = base.Toolbox()
 archive = []
 archive_size_min = 10
-random_rate = 00.5
+random_rate = 0.5
 
 
 def fit_predict(Yt_input):
@@ -122,19 +123,32 @@ def fit_predict(Yt_input):
            + eta * np.eye(ns + nt, ns + nt)
     Beta = np.dot(np.linalg.inv(left), np.dot(A, YY))
 
+    # re-calculate the soft label again based on the obtained Beta
+    F = np.dot(K, Beta)
+    Y_pseudo = np.argmax(F, axis=1) + 1
+    Yt_pseu = Y_pseudo[ns:]
+
+    # have to update the matrix M
+    for c in range(1, C + 1):
+        e = np.zeros((ns + nt, 1))
+        tt = Ys == c
+        e[np.where(tt == True)] = 1.0 / len(Ys[np.where(Ys == c)])
+        yy = Yt_pseu == c
+        ind = np.where(yy == True)
+        inds = [item + ns for item in ind]
+        if len(Yt_pseu[np.where(Yt_pseu == c)]) == 0:
+            e[tuple(inds)] = 0.0
+        else:
+            e[tuple(inds)] = -1.0 / len(Yt_pseu[np.where(Yt_pseu == c)])
+        e[np.isinf(e)] = 0
+        N += np.dot(e, e.T)
+    M = (1 - mu) * M0 + mu * N
+
     # Now given the new beta, calculate the fitness
-    SRM = np.linalg.norm(np.dot(YY.T - np.dot(Beta.T, K), A)) \
+    SRM = np.linalg.norm(np.dot(YY.T - F.T, A)) \
           + eta * np.linalg.multi_dot([Beta.T, K, Beta]).trace()
     MMD = lamb * np.linalg.multi_dot([Beta.T, np.linalg.multi_dot([K, M, K]), Beta]).trace()
     fitness = SRM + MMD
-
-    # Calcuate the accuracy
-    F = np.dot(K, Beta)
-    Y_pseudo = np.argmax(F, axis=1) + 1
-    #  Ys_pseu = Y_pseudo[:self.ns]
-    # acc_s = np.mean(Ys_pseu == self.Ys)
-    Yt_pseu = Y_pseudo[ns:]
-    # acc_t = np.mean(Yt_pseu == self.Yt)
 
     return Yt_pseu, fitness
 
@@ -176,10 +190,10 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     # parameters for GA
     N_BIT = nt
     N_GEN = 10
-    N_IND = 10
-    MUTATION_RATE = 0.1
-    CXPB = 0.9
-    MPB = 0.1
+    N_IND = 30
+    MUTATION_RATE = 1.0/N_BIT
+    CXPB = 0.2
+    MPB = 0.8
 
     pos_min = 1
     pos_max = C
@@ -202,34 +216,35 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     # pool = multiprocessing.Pool(4)
     # toolbox.register("map", pool.map)
 
-    # evolutionary process
+    # initialize some individuals by predefined classifiers
     pop = toolbox.pop(n=N_IND)
 
-    classifiers = list([])
-    classifiers.append(KNeighborsClassifier(1))
-    classifiers.append(KNeighborsClassifier(3))
-    classifiers.append(KNeighborsClassifier(5))
-    classifiers.append(SVC(kernel="linear", C=0.025, random_state=np.random.randint(2 ** 10)))
-    classifiers.append(SVC(kernel="rbf", C=1, gamma=2, random_state=np.random.randint(2 ** 10)))
-    classifiers.append(GaussianProcessClassifier(1.0 * RBF(1.0), random_state=np.random.randint(2 ** 10)))
-    classifiers.append(GaussianNB())
-    classifiers.append(DecisionTreeClassifier(max_depth=5, random_state=np.random.randint(2 ** 10)))
-    classifiers.append(
-        RandomForestClassifier(max_depth=5, n_estimators=10, random_state=np.random.randint(2 ** 10)))
-    classifiers.append(AdaBoostClassifier(random_state=np.random.randint(2 ** 10)))
+    # classifiers = list([])
+    # classifiers.append(KNeighborsClassifier(1))
+    # classifiers.append(SVC(kernel="linear", C=0.025, random_state=np.random.randint(2 ** 10)))
+    # classifiers.append(GaussianProcessClassifier(1.0 * RBF(1.0), random_state=np.random.randint(2 ** 10)))
+    # classifiers.append(KNeighborsClassifier(3))
+    # classifiers.append(SVC(kernel="rbf", C=1, gamma=2, random_state=np.random.randint(2 ** 10)))
+    # classifiers.append(DecisionTreeClassifier(max_depth=5, random_state=np.random.randint(2 ** 10)))
+    # classifiers.append(KNeighborsClassifier(5))
+    # classifiers.append(GaussianNB())
+    # classifiers.append(RandomForestClassifier(max_depth=5, n_estimators=10, random_state=np.random.randint(2 ** 10)))
+    # classifiers.append(AdaBoostClassifier(random_state=np.random.randint(2 ** 10)))
+    #
+    # step = N_IND/len(classifiers)
+    # for ind_index, classifier in enumerate(classifiers):
+    #     classifier.fit(Xs, Ys)
+    #     Yt_pseu = classifier.predict(Xt)
+    #     for bit_idex, value in enumerate(Yt_pseu):
+    #         pop[ind_index*step][bit_idex] = value
 
-    step = N_IND/len(classifiers)
-    for ind_index, classifier in enumerate(classifiers):
-        classifier.fit(Xs, Ys)
-        Yt_pseu = classifier.predict(Xt)
-        for bit_idex, value in enumerate(Yt_pseu):
-            pop[ind_index*step][bit_idex] = value
-
+    # evaluate the initialized populations
     start_results = toolbox.map(toolbox.evaluate, pop)
     for ind, result in zip(pop, start_results):
         new_pos, fit = result
-        # for index in range(len(ind)):
-        #     ind[index] = new_pos[index]
+        # assign the new_pos to ind
+        for index in range(len(ind)):
+            ind[index] = new_pos[index]
         ind.fitness.values = fit,
 
     hof = tools.HallOfFame(maxsize=1)
@@ -237,27 +252,24 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
 
     for g in range(N_GEN):
         print("=========== Iteration %d ===========" % g)
-        # selection
 
+        # selection
         offspring = toolbox.select(pop, len(pop))
         offspring = map(toolbox.clone, offspring)
 
-        # # applying crossover
+        # applying crossover
         for c1, c2 in zip(offspring[::2], offspring[1::2]):
             if np.random.rand() < CXPB:
                 toolbox.crossover(c1, c2)
                 del c1.fitness.values
                 del c2.fitness.values
-        # # applying mutation
+        # applying mutation
         for mutant in offspring:
             if np.random.rand() < MPB:
                 toolbox.mutate(mutant)
                 del mutant.fitness.values
-        # evaluate the individuals with an invalid fitness
-        # invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
-        # results = toolbox.map(toolbox.evaluate, invalid_ind)
 
-        # if no crossover and mutation attend, we must evaluate all the individuals
+        # evaluate all the offspring, since the evaluation creates new positions
         results = toolbox.map(toolbox.evaluate, offspring)
         for ind_index, result in enumerate(results):
             ind = offspring[ind_index]
@@ -278,8 +290,8 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
                 # indication of local optima
                 # store the solution in the archive set
                 # reinitialize the new position
-                archive.append(new_pos)
-                print(len(archive))
+                if not is_in(new_pos, archive):
+                    archive.append(new_pos)
                 ind = re_initialize()
                 new_pos, fit = fit_predict(ind)
                 for index in range(len(new_pos)):
@@ -297,6 +309,17 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     # new_pos, fit = fit_predict(best_ind)
     acc = np.mean(best_ind == Yt)
     print("Accuracy of the best individual: %f" % acc)
+
+    top10 = tools.selBest(pop, 10)
+    vote_label = []
+    for ins_index in range(len(top10[0])):
+        ins_labels = [row[ins_index] for row in top10]
+        counts = np.bincount(ins_labels)
+        label = np.argmax(counts)
+        vote_label.append(label)
+    acc = np.mean(vote_label == Yt)
+    print("Accuracy of the 10%% population: %f" % acc)
+
 
     # Use the whole population
     vote_label = []
@@ -349,6 +372,48 @@ def re_initialize():
         for index, label in enumerate(pseu_labels):
             new_ind[index] = label
         return new_ind
+
+
+def is_in(array, matrix):
+    """
+    Check wherether an array matches a row in the matrix
+    Both represented by a numpy array
+    :param array:
+    :param matrix:
+    :return:
+    """
+    if len(matrix) == 0:
+        return False
+    else:
+        return np.any(np.sum(np.abs(matrix-array), axis=1) == 0)
+
+
+def laplacian_matrix(data, k):
+    """
+    :param data: containing data points,
+    :param k: the number of neighbors considered (this distance metric is cosine,
+    and the weights are measured by cosine)
+    :return:
+    """
+    nn = neighbors.NearestNeighbors(n_neighbors=k, algorithm='brute', metric='cosine')
+    nn.fit(data)
+    dist, nn = nn.kneighbors(return_distance=True)
+    sim = np.zeros((len(data), len(data)))
+    for ins_index in range(len(sim)):
+        dist_row = dist[ins_index]
+        nn_row = nn[ins_index]
+        for dist_value, ind_index in zip(dist_row, nn_row):
+            sim[ins_index][ind_index] = 1.0 - dist_value
+            sim[ind_index][ins_index] = 1.0 - dist_value
+    for i in range(len(sim)):
+        sim[i][i] = 1.0
+
+    D = np.zeros((sim.shape[0], sim.shape[1]))
+    for row_index in range(len(sim)):
+        D[row_index][row_index] = np.sum(sim[row_index])
+
+    L = D-sim
+    return L
 
 
 if __name__ == '__main__':
