@@ -163,7 +163,7 @@ class MEDA:
                 Ytest[inds, c - 1] = 1
             SRM = np.linalg.norm(np.dot(Ytest.T - np.dot(Beta.T, K), E)) \
                   + self.eta * np.linalg.multi_dot([Beta.T, K, Beta]).trace()
-            MMD = self.lamb * np.linalg.multi_dot([Beta.T, np.linalg.multi_dot([K, M, K]), Beta]).trace()
+            MMD =  np.linalg.multi_dot([Beta.T, np.linalg.multi_dot([K, self.lamb *M + self.rho * L, K]), Beta]).trace()
             fitness = SRM + MMD
             # print(fitness, SRM, MMD)
 
@@ -208,14 +208,14 @@ def laplacian_matrix(data, k):
 
 
 if __name__ == '__main__':
-    datasets = np.array(['SURFc-d'])
-    # datasets = np.array(['GasSensor1-4', 'GasSensor1-2', 'GasSensor1-3',
-    #                      'GasSensor1-5', 'GasSensor1-6', 'GasSensor1-7',
-    #                      'GasSensor1-8', 'GasSensor1-9', 'GasSensor1-10',
-    #                      'SURFa-c', 'SURFa-d', 'SURFa-w', 'SURFc-a',
-    #                      'SURFc-d', 'SURFc-w', 'SURFd-a', 'SURFd-c',
-    #                      'SURFd-w', 'SURFw-a', 'SURFw-c', 'SURFw-d',
-    #                      'MNIST-USPS', 'USPS-MNIST'])
+    # datasets = np.array(['SURFd-a'])
+    datasets = np.array(['GasSensor1-4', 'GasSensor1-2', 'GasSensor1-3',
+                         'GasSensor1-5', 'GasSensor1-6', 'GasSensor1-7',
+                         'GasSensor1-8', 'GasSensor1-9', 'GasSensor1-10',
+                         'SURFa-c', 'SURFa-d', 'SURFa-w', 'SURFc-a',
+                         'SURFc-d', 'SURFc-w', 'SURFd-a', 'SURFd-c',
+                         'SURFd-w', 'SURFw-a', 'SURFw-c', 'SURFw-d',
+                         'MNIST-USPS', 'USPS-MNIST'])
 
     for dataset in datasets:
         source = np.genfromtxt("/home/nguyenhoai2/Grid/data/TransferLearning/UnPairs/" + dataset + "/Source",

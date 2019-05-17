@@ -139,6 +139,7 @@ class Random_MEDA:
         self.A = np.diagflat(np.vstack((np.ones((self.ns, 1)), np.zeros((self.nt, 1)))))
         e = np.vstack((1.0 / self.ns * np.ones((self.ns, 1)), -1.0 / self.nt * np.ones((self.nt, 1))))
         self.M0 = e * e.T * self.C
+        self.L = laplacian_matrix(X.T, self.p)
 
         self.YY = np.zeros((self.ns, self.C))
         for c in range(1, self.C + 1):
@@ -449,7 +450,7 @@ class Random_MEDA:
         # Now given the new beta, calculate the fitness
         SRM = np.linalg.norm(np.dot(self.YY.T - np.dot(Beta.T, self.K), self.A)) \
               + self.eta * np.linalg.multi_dot([Beta.T, self.K, Beta]).trace()
-        MMD = self.lamb * np.linalg.multi_dot([Beta.T, np.linalg.multi_dot([self.K, M, self.K]), Beta]).trace()
+        MMD = np.linalg.multi_dot([Beta.T, np.linalg.multi_dot([self.K, self.lamb * M + self.rho * self.L, self.K]), Beta]).trace()
         fitness = SRM + MMD
 
         # Calcuate the accuracy
@@ -499,13 +500,16 @@ if __name__ == '__main__':
     archive_size = 10  # size of archive to be ok for using in creating new (using with label/mix label and random)
     random_rate = 0.5  # arg[4] can be 1,2,3,.., 10 -> 0.1, 0.2, 0.3,...,1.0
 
-    source = np.genfromtxt("data/Source", delimiter=",")
+    dataset = 'SURFd-a'
+    dir = '/home/nguyenhoai2/Grid/data/TransferLearning/UnPairs/' + dataset
+
+    source = np.genfromtxt(dir+"/Source", delimiter=",")
     m = source.shape[1] - 1
     Xs = source[:, 0:m]
     Ys = np.ravel(source[:, m:m + 1])
     Ys = np.array([int(label) for label in Ys])
 
-    target = np.genfromtxt("data/Target", delimiter=",")
+    target = np.genfromtxt(dir+"/Target", delimiter=",")
     Xt = target[:, 0:m]
     Yt = np.ravel(target[:, m:m + 1])
     Yt = np.array([int(label) for label in Yt])

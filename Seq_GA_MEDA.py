@@ -86,12 +86,24 @@ M0 = 0
 K = 0
 A = 0
 e = 0
+L = 0
+sim = 0
 
 toolbox = base.Toolbox()
 archive = []
 archive_size_min = 10
 random_rate = 0.5
 
+def manifold(Yt_input):
+    Yt_pseu = np.array(np.copy(Yt_input))
+    Y_pseu = np.append(Ys, Yt_pseu)
+    one_hot = np.zeros((len(Y_pseu), C))
+    for c in range(1, C+1):
+        tt = Y_pseu == c
+        for index in np.where(tt == True)[0]:
+            one_hot[index][c-1] = 1
+    return np.sum([sim[i][j]*np.linalg.norm(Y_pseu[i]-Y_pseu[j])
+                   for i in range(len(sim)) for j in range(len(sim))])
 
 def fit_predict(Yt_input):
     """
@@ -158,7 +170,7 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     Running GA algorithms, where each individual is a set of target pseudo labels.
     :return: the best solution of GAs.
     """
-    global ns, nt, C, Xs, Ys, Xt, Yt, YY, K, A, e, M0, L, archive
+    global ns, nt, C, Xs, Ys, Xt, Yt, YY, K, A, e, M0, L, archive, sim
     Xs = Xsource
     Ys = Ysource
     Xt = Xtarget
@@ -181,6 +193,7 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     e = np.vstack((1.0 / ns * np.ones((ns, 1)), -1.0 / nt * np.ones((nt, 1))))
     M0 = e * e.T * C
     L = laplacian_matrix(X.T, p)
+    sim = simliarity_matrix(X.T, p)
 
     YY = np.zeros((ns, C))
     for c in range(1, C + 1):
@@ -208,7 +221,7 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     toolbox.register("ind", tools.initRepeat, creator.Ind, toolbox.bit, n=N_BIT)
     toolbox.register("pop", tools.initRepeat, creator.Pop, toolbox.ind)
     # for evaluation
-    toolbox.register("evaluate", fit_predict)
+    toolbox.register("evaluate", manifold)
     # for genetic operators
     toolbox.register("select", tools.selTournament, tournsize=3)
     toolbox.register("crossover", tools.cxUniform, indpb=0.5 )
@@ -391,13 +404,7 @@ def is_in(array, matrix):
         return np.any(np.sum(np.abs(matrix-array), axis=1) == 0)
 
 
-def laplacian_matrix(data, k):
-    """
-    :param data: containing data points,
-    :param k: the number of neighbors considered (this distance metric is cosine,
-    and the weights are measured by cosine)
-    :return:
-    """
+def simliarity_matrix(data, k):
     nn = neighbors.NearestNeighbors(n_neighbors=k, algorithm='brute', metric='cosine')
     nn.fit(data)
     dist, nn = nn.kneighbors(return_distance=True)
@@ -410,6 +417,17 @@ def laplacian_matrix(data, k):
             sim[ind_index][ins_index] = 1.0 - dist_value
     for i in range(len(sim)):
         sim[i][i] = 1.0
+    return sim
+
+
+def laplacian_matrix(data, k):
+    """
+    :param data: containing data points,
+    :param k: the number of neighbors considered (this distance metric is cosine,
+    and the weights are measured by cosine)
+    :return:
+    """
+    sim = simliarity_matrix(data, k)
 
     S = [np.sum(row) for row in sim]
 
