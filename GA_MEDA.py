@@ -2,19 +2,11 @@ import random
 
 import numpy as np
 from deap import base, creator, tools
-from sklearn import svm, metrics, neighbors
-from scipy.spatial.distance import pdist,squareform
-
-import GFK
-
-from sklearn.svm import SVC
-from sklearn.gaussian_process import GaussianProcessClassifier
-from sklearn.gaussian_process.kernels import RBF
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
-from sklearn.naive_bayes import GaussianNB
+from sklearn import metrics, neighbors
 from sklearn import svm
 from sklearn.neighbors import KNeighborsClassifier
+
+import GFK
 
 
 # from scoop import futures
@@ -93,37 +85,16 @@ archive_size_min = 10
 random_rate = 0.5
 
 
-def fit_predict(Yt_input):
+def beta_predict(beta):
     """
-    Calculate the fitness function of a label array of target instances
-    :param Yt_pseu: the pseudolabel of target instances, which are in a chromosome.
-    :return:
+    predict the label given the beta matrix
+    :param: beta
+    :return: predict label
     """
-    # Based on the Yt_pseu, calculate the optimal beta.
-    Yt_pseu = np.array(np.copy(Yt_input))
     mu = 0.5
     N = 0
-    for c in range(1, C + 1):
-        e = np.zeros((ns + nt, 1))
-        tt = Ys == c
-        e[np.where(tt == True)] = 1.0 / len(Ys[np.where(Ys == c)])
-        yy = Yt_pseu == c
-        ind = np.where(yy == True)
-        inds = [item + ns for item in ind]
-        if len(Yt_pseu[np.where(Yt_pseu == c)]) == 0:
-            e[tuple(inds)] = 0.0
-        else:
-            e[tuple(inds)] = -1.0 / len(Yt_pseu[np.where(Yt_pseu == c)])
-        e[np.isinf(e)] = 0
-        N += np.dot(e, e.T)
-    M = (1 - mu) * M0 + mu * N
-    M /= np.linalg.norm(M, 'fro')
-    left = np.dot(A + lamb * M + rho * L, K) \
-           + eta * np.eye(ns + nt, ns + nt)
-    Beta = np.dot(np.linalg.inv(left), np.dot(A, YY))
-
     # re-calculate the soft label again based on the obtained Beta
-    F = np.dot(K, Beta)
+    F = np.dot(K, beta)
     Y_pseudo = np.argmax(F, axis=1) + 1
     Yt_pseu = Y_pseudo[ns:]
 
@@ -143,14 +114,85 @@ def fit_predict(Yt_input):
         N += np.dot(e, e.T)
     M = (1 - mu) * M0 + mu * N
 
+    M /= np.linalg.norm(M, 'fro')
+    left = np.dot(A + lamb * M + rho * L, K) \
+           + eta * np.eye(ns + nt, ns + nt)
+    beta = np.dot(np.linalg.inv(left), np.dot(A, YY))
+
+    F = np.dot(K, beta)
+    Y_pseu = np.argmax(F, axis=1) + 1
+    Yt_pseu = Y_pseu[ns:].tolist()
+
+    return Yt_pseu
+
+
+def label_phase(ind):
+    '''
+    Calculate the fitness of ind, ind has the label part and beta part
+    :param ind: individual to calculate the fitness
+    :return: the fitness
+    '''
+    Yt_pseu = np.array([ind[index] for index in range(len(ind))])
+    beta = ind.beta
+    mu = 0.5
+    N = 0
+    for c in range(1, C + 1):
+        e = np.zeros((ns + nt, 1))
+        tt = Ys == c
+        e[np.where(tt == True)] = 1.0 / len(Ys[np.where(Ys == c)])
+        yy = Yt_pseu == c
+        ind = np.where(yy == True)
+        inds = [item + ns for item in ind]
+        if len(Yt_pseu[np.where(Yt_pseu == c)]) == 0:
+            e[tuple(inds)] = 0.0
+        else:
+            e[tuple(inds)] = -1.0 / len(Yt_pseu[np.where(Yt_pseu == c)])
+        e[np.isinf(e)] = 0
+        N += np.dot(e, e.T)
+    M = (1 - mu) * M0 + mu * N
+    M /= np.linalg.norm(M, 'fro')
+    F = np.dot(K, beta)
+
     # Now given the new beta, calculate the fitness
     SRM = np.linalg.norm(np.dot(YY.T - F.T, A)) \
-          + eta * np.linalg.multi_dot([Beta.T, K, Beta]).trace()
-    MMD = lamb * np.linalg.multi_dot([Beta.T, np.linalg.multi_dot([K, M, K]), Beta]).trace()
-    Lap = rho  * np.linalg.multi_dot([Beta.T, np.linalg.multi_dot([K, L, K]), Beta]).trace()
-    fitness = SRM + MMD + Lap
+          + eta * np.linalg.multi_dot([beta.T, K, beta]).trace()
+    MMD = np.linalg.multi_dot([beta.T,
+                               np.linalg.multi_dot([K, lamb * M + rho * L, K]),
+                               beta]).trace()
+    fitness = SRM + MMD
 
-    return Yt_pseu, fitness
+    return fitness
+
+
+def beta_phase(ind):
+    '''
+    Based on the label in ind, calculate the new Beta
+    :param ind: individual whose beta needs to be updated
+    :return: the beta matrix based on the ind
+    '''
+    Yt_pseu = np.array([ind[index] for index in range(len(ind))])
+    mu = 0.5
+    N = 0
+    for c in range(1, C + 1):
+        e = np.zeros((ns + nt, 1))
+        tt = Ys == c
+        e[np.where(tt == True)] = 1.0 / len(Ys[np.where(Ys == c)])
+        yy = Yt_pseu == c
+        ind = np.where(yy == True)
+        inds = [item + ns for item in ind]
+        if len(Yt_pseu[np.where(Yt_pseu == c)]) == 0:
+            e[tuple(inds)] = 0.0
+        else:
+            e[tuple(inds)] = -1.0 / len(Yt_pseu[np.where(Yt_pseu == c)])
+        e[np.isinf(e)] = 0
+        N += np.dot(e, e.T)
+    M = (1 - mu) * M0 + mu * N
+    M /= np.linalg.norm(M, 'fro')
+    left = np.dot(A + lamb * M + rho * L, K) \
+           + eta * np.eye(ns + nt, ns + nt)
+    beta = np.dot(np.linalg.inv(left), np.dot(A, YY))
+
+    return beta
 
 
 def evolve(Xsource, Ysource, Xtarget, Ytarget):
@@ -193,14 +235,14 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     N_GEN = 10
     N_IND = 10
     MUTATION_RATE = 1.0/N_BIT
-    CXPB = 0.5
-    MPB = 0.5
+    CXPB = 0.2
+    MPB = 0.8
 
     pos_min = 1
     pos_max = C
 
     creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
-    creator.create("Ind", list, fitness=creator.FitnessMin)
+    creator.create("Ind", list, fitness=creator.FitnessMin, beta=list)
     creator.create("Pop", list)
 
     # for creating the population
@@ -208,7 +250,7 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     toolbox.register("ind", tools.initRepeat, creator.Ind, toolbox.bit, n=N_BIT)
     toolbox.register("pop", tools.initRepeat, creator.Pop, toolbox.ind)
     # for evaluation
-    toolbox.register("evaluate", fit_predict)
+    toolbox.register("evaluate", label_phase)
     # for genetic operators
     toolbox.register("select", tools.selTournament, tournsize=3)
     toolbox.register("crossover", tools.cxUniform, indpb=0.5 )
@@ -222,15 +264,15 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
 
     classifiers = list([])
     classifiers.append(KNeighborsClassifier(1))
-    classifiers.append(SVC(kernel="linear", C=0.025, random_state=np.random.randint(2 ** 10)))
-    classifiers.append(GaussianProcessClassifier(1.0 * RBF(1.0), random_state=np.random.randint(2 ** 10)))
-    classifiers.append(KNeighborsClassifier(3))
-    classifiers.append(SVC(kernel="rbf", C=1, gamma=2, random_state=np.random.randint(2 ** 10)))
-    classifiers.append(DecisionTreeClassifier(max_depth=5, random_state=np.random.randint(2 ** 10)))
-    classifiers.append(KNeighborsClassifier(5))
-    classifiers.append(GaussianNB())
-    classifiers.append(RandomForestClassifier(max_depth=5, n_estimators=10, random_state=np.random.randint(2 ** 10)))
-    classifiers.append(AdaBoostClassifier(random_state=np.random.randint(2 ** 10)))
+    # classifiers.append(SVC(kernel="linear", C=0.025, random_state=np.random.randint(2 ** 10)))
+    # classifiers.append(GaussianProcessClassifier(1.0 * RBF(1.0), random_state=np.random.randint(2 ** 10)))
+    # classifiers.append(KNeighborsClassifier(3))
+    # classifiers.append(SVC(kernel="rbf", C=1, gamma=2, random_state=np.random.randint(2 ** 10)))
+    # classifiers.append(DecisionTreeClassifier(max_depth=5, random_state=np.random.randint(2 ** 10)))
+    # classifiers.append(KNeighborsClassifier(5))
+    # classifiers.append(GaussianNB())
+    # classifiers.append(RandomForestClassifier(max_depth=5, n_estimators=10, random_state=np.random.randint(2 ** 10)))
+    # classifiers.append(AdaBoostClassifier(random_state=np.random.randint(2 ** 10)))
 
     step = N_IND/len(classifiers)
     for ind_index, classifier in enumerate(classifiers):
@@ -242,13 +284,14 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     # for index, value in enumerate(Yt):
     #     pop[len(pop)-1][index] = Yt[index]
 
+    # now initialize the beta
+    betas = toolbox.map(beta_phase, pop)
+    for beta, ind in zip(betas, pop):
+        ind.beta = beta
+
     # evaluate the initialized populations
-    start_results = toolbox.map(toolbox.evaluate, pop)
-    for ind, result in zip(pop, start_results):
-        new_pos, fit = result
-        # assign the new_pos to ind
-        for index in range(len(ind)):
-            ind[index] = new_pos[index]
+    fitnesses = toolbox.map(toolbox.evaluate, pop)
+    for ind, fit in zip(pop, fitnesses):
         ind.fitness.values = fit,
 
     hof = tools.HallOfFame(maxsize=1)
@@ -265,42 +308,30 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
         for c1, c2 in zip(offspring[::2], offspring[1::2]):
             if np.random.rand() < CXPB:
                 toolbox.crossover(c1, c2)
-                del c1.fitness.values
-                del c2.fitness.values
+                # assign small fitness of the parents to expect the
+                # children should have better fitnes
+                c1.fitness.values = np.min([c1.fitness.values[0], c2.fitness.values[0]]),
+                c2.fitness.values = c1.fitness.values[0],
+
         # applying mutation
         for mutant in offspring:
             if np.random.rand() < MPB:
+                # retain the fitness value of parent to children
                 toolbox.mutate(mutant)
-                del mutant.fitness.values
 
-        # evaluate all the offspring, since the evaluation creates new positions
-        results = toolbox.map(toolbox.evaluate, offspring)
-        for ind_index, result in enumerate(results):
-            ind = offspring[ind_index]
-            new_pos, fit = result
-
-            test_equal = True
-            for index in range(len(ind)):
-                if ind[index] != new_pos[index]:
-                    test_equal = False
-                    break
-
-            if not test_equal:
-                for index in range(len(ind)):
-                    ind[index] = new_pos[index]
-                ind.fitness.values = fit,
+        # now evaluate all the offspring (using label-phase)
+        fitnesses = toolbox.map(toolbox.evaluate, offspring)
+        for ind, fitness in zip(offspring, fitnesses):
+            if ind.fitness.values[0] <= fitness:
+                # no improvement in fitness for the beta, store the beta
+                if not check_contain(ind.beta, archive):
+                    archive.append(ind.beta)
+                # make a new Beta based on the current label, and update the fitness
+                new_beta = beta_phase(ind)
+                ind.beta = new_beta
+                ind.fitness.values = label_phase(ind),
             else:
-                # the new position is not changed
-                # indication of local optima
-                # store the solution in the archive set
-                # reinitialize the new position
-                if not is_in(new_pos, archive):
-                    archive.append(new_pos)
-                ind = re_initialize()
-                new_pos, fit = fit_predict(ind)
-                for index in range(len(new_pos)):
-                    offspring[ind_index][index] = new_pos[index]
-                offspring[ind_index].fitness.values = fit,
+                ind.fitness.values = fitness,
 
         # The population is entirely replaced by the offspring
         pop[:] = tools.selBest(offspring + list(hof), len(pop))
@@ -351,16 +382,30 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     # use the archive set
     if len(archive) > 0:
         vote_label = []
-        for ins_index in range(len(archive[0])):
-            ins_labels = []
-            for m_index in range(len(archive)):
-                ins_labels.append(archive[m_index][ins_index])
-            counts = np.bincount(ins_labels)
+        ins_labels = []
+        for beta in archive:
+            Yt_pseu = beta_predict(beta)
+            ins_labels.append(Yt_pseu)
+
+        ins_labels = np.array(ins_labels)
+        for m_index in range(len(ins_labels[0])):
+            counts = np.bincount(ins_labels[:, m_index])
             label = np.argmax(counts)
             vote_label.append(label)
         acc = np.mean(vote_label == Yt)
         print("Accuracy of the archive: %f" % acc)
 
+
+def check_contain(oneD, twoD):
+    '''
+    Check whethere oneD is a row in twoD
+    :param oneD: an 1D array
+    :param twoD: an 2D array
+    :return:
+    '''
+    if len(twoD) == 0:
+        return False
+    return np.max([np.min(oneD == row) for row in twoD])
 
 def re_initialize():
     new_ind = toolbox.ind()
@@ -426,28 +471,31 @@ if __name__ == '__main__':
     run = int(sys.argv[1])
     random_seed = 1617 * run
 
-    # datasets = np.array(['GasSensor1-4', 'GasSensor1-2', 'GasSensor1-3',
-    #                      'GasSensor1-5', 'GasSensor1-6', 'GasSensor1-7',
-    #                      'GasSensor1-8', 'GasSensor1-9', 'GasSensor1-10',
-    #                      'SURFa-c', 'SURFa-d', 'SURFa-w', 'SURFc-a',
-    #                      'SURFc-d', 'SURFc-w', 'SURFd-a', 'SURFd-c',
-    #                      'SURFd-w', 'SURFw-a', 'SURFw-c', 'SURFw-d',
-    #                      'MNIST-USPS', 'USPS-MNIST'])
+    datasets = np.array(['SURFa-c', 'SURFa-d', 'SURFa-w', 'SURFc-a',
+                         'SURFc-d', 'SURFc-w', 'SURFd-a', 'SURFd-c',
+                         'SURFd-w', 'SURFw-a', 'SURFw-c', 'SURFw-d',
+                         'MNIST-USPS', 'USPS-MNIST', 'ICLEFc-i', 'ICLEFc-p'
+                         'ICLEFi-c', 'ICLEFi-p', 'ICLEFp-c', 'ICLEFp-i'])
+    for dataset in datasets:
+        print('-------------------> %s <--------------------' %dataset)
+        dir = '/home/nguyenhoai2/Grid/data/TransferLearning/UnPairs/' + dataset
+        source = np.genfromtxt(dir + "/Source", delimiter=",")
+        m = source.shape[1] - 1
+        Xs = source[:, 0:m]
+        Ys = np.ravel(source[:, m:m + 1])
+        Ys = np.array([int(label) for label in Ys])
 
-    dataset = 'SURFd-a'
-    dir = '/home/nguyenhoai2/Grid/data/TransferLearning/UnPairs/'+dataset
-    source = np.genfromtxt(dir+"/Source", delimiter=",")
-    m = source.shape[1] - 1
-    Xs = source[:, 0:m]
-    Ys = np.ravel(source[:, m:m + 1])
-    Ys = np.array([int(label) for label in Ys])
+        target = np.genfromtxt(dir + "/Target", delimiter=",")
+        Xt = target[:, 0:m]
+        Yt = np.ravel(target[:, m:m + 1])
+        Yt = np.array([int(label) for label in Yt])
 
-    target = np.genfromtxt(dir+"/Target", delimiter=",")
-    Xt = target[:, 0:m]
-    Yt = np.ravel(target[:, m:m + 1])
-    Yt = np.array([int(label) for label in Yt])
+        C = len(np.unique(Ys))
+        if C > np.max(Ys):
+            Ys = Ys + 1
+            Yt = Yt + 1
 
-    np.random.seed(random_seed)
-    random.seed(random_seed)
+        np.random.seed(random_seed)
+        random.seed(random_seed)
 
-    evolve(Xs, Ys, Xt, Yt)
+        evolve(Xs, Ys, Xt, Yt)

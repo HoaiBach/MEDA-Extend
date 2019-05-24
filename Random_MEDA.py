@@ -54,6 +54,8 @@ def proxy_a_distance(source_X, target_X):
     """
     nb_source = np.shape(source_X)[0]
     nb_target = np.shape(target_X)[0]
+    if nb_source == 0 or nb_target == 0:
+        return -2
     train_X = np.vstack((source_X, target_X))
     train_Y = np.hstack((np.zeros(nb_source, dtype=int), np.ones(nb_target, dtype=int)))
     clf = svm.LinearSVC(random_state=0, loss='hinge')
@@ -500,7 +502,7 @@ if __name__ == '__main__':
     archive_size = 10  # size of archive to be ok for using in creating new (using with label/mix label and random)
     random_rate = 0.5  # arg[4] can be 1,2,3,.., 10 -> 0.1, 0.2, 0.3,...,1.0
 
-    dataset = 'SURFd-a'
+    dataset = ''
     dir = '/home/nguyenhoai2/Grid/data/TransferLearning/UnPairs/' + dataset
 
     source = np.genfromtxt(dir+"/Source", delimiter=",")
