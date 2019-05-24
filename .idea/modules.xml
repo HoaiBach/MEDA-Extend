@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/PSO-MEDA.iml" filepath="$PROJECT_DIR$/.idea/PSO-MEDA.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../MEDA-Extend/.idea/MEDA-Extend.iml" filepath="$PROJECT_DIR$/../MEDA-Extend/.idea/MEDA-Extend.iml" />
     </modules>
   </component>
 </project>

@@ -298,7 +298,7 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     hof.update(pop)
 
     for g in range(N_GEN):
-        print("=========== Iteration %d ===========" % g)
+        # print("=========== Iteration %d ===========" % g)
 
         # selection
         offspring = toolbox.select(pop, len(pop))
@@ -337,9 +337,9 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
         pop[:] = tools.selBest(offspring + list(hof), len(pop))
         hof.update(pop)
         best_ind = tools.selBest(pop, 1)[0]
-        print("Best fitness %f " % best_ind.fitness.values)
+        # print("Best fitness %f " % best_ind.fitness.values)
 
-    print("=========== Final result============")
+    # print("=========== Final result============")
     best_ind = tools.selBest(pop, 1)[0]
     # new_pos, fit = fit_predict(best_ind)
     acc = np.mean(best_ind == Yt)
