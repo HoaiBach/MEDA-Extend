@@ -201,6 +201,7 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     :return: the best solution of GAs.
     """
     global ns, nt, C, Xs, Ys, Xt, Yt, YY, K, A, e, M0, L, archive
+    archive = []
     Xs = Xsource
     Ys = Ysource
     Xt = Xtarget
@@ -474,7 +475,7 @@ if __name__ == '__main__':
     datasets = np.array(['SURFa-c', 'SURFa-d', 'SURFa-w', 'SURFc-a',
                          'SURFc-d', 'SURFc-w', 'SURFd-a', 'SURFd-c',
                          'SURFd-w', 'SURFw-a', 'SURFw-c', 'SURFw-d',
-                         'MNIST-USPS', 'USPS-MNIST', 'ICLEFc-i', 'ICLEFc-p'
+                         'MNIST-USPS', 'USPS-MNIST', 'ICLEFc-i', 'ICLEFc-p',
                          'ICLEFi-c', 'ICLEFi-p', 'ICLEFp-c', 'ICLEFp-i'])
     for dataset in datasets:
         print('-------------------> %s <--------------------' %dataset)
