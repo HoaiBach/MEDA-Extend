@@ -63,6 +63,25 @@ def proxy_a_distance(source_X, target_X):
     dist = 2 * (1 - 2 * error)
     return dist
 
+def estimate_mu(_X1, _Y1, _X2, _Y2):
+    adist_m = proxy_a_distance(_X1, _X2)
+    C = len(np.unique(_Y1))
+    epsilon = 1e-3
+    list_adist_c = []
+    for i in range(1, C + 1):
+        ind_i, ind_j = np.where(_Y1 == i), np.where(_Y2 == i)
+        Xsi = _X1[ind_i[0], :]
+        Xtj = _X2[ind_j[0], :]
+        adist_i = proxy_a_distance(Xsi, Xtj)
+        list_adist_c.append(adist_i)
+    adist_c = sum(list_adist_c) / C
+    mu = adist_c / (adist_c + adist_m)
+    if mu > 1:
+        mu = 1
+    if mu < epsilon:
+        mu = 0
+    return mu
+
 
 kernel_type = 'rbf'
 dim = 20
@@ -89,29 +108,8 @@ A = 0
 e = 0
 
 toolbox = base.Toolbox()
-archive = []
-archive_size_min = 10
 random_rate = 0.5
 
-
-def estimate_mu(_X1, _Y1, _X2, _Y2):
-    adist_m = proxy_a_distance(_X1, _X2)
-    C = len(np.unique(_Y1))
-    epsilon = 1e-3
-    list_adist_c = []
-    for i in range(1, C + 1):
-        ind_i, ind_j = np.where(_Y1 == i), np.where(_Y2 == i)
-        Xsi = _X1[ind_i[0], :]
-        Xtj = _X2[ind_j[0], :]
-        adist_i = proxy_a_distance(Xsi, Xtj)
-        list_adist_c.append(adist_i)
-    adist_c = sum(list_adist_c) / C
-    mu = adist_c / (adist_c + adist_m)
-    if mu > 1:
-        mu = 1
-    if mu < epsilon:
-        mu = 0
-    return mu
 
 def beta_predict(beta):
     """
@@ -125,6 +123,7 @@ def beta_predict(beta):
     Y_pseudo = np.argmax(F, axis=1) + 1
     Yt_pseu = Y_pseudo[ns:]
     mu = estimate_mu(Xs, Ys, Xt, Yt_pseu)
+
     # have to update the matrix M
     for c in range(1, C + 1):
         e = np.zeros((ns + nt, 1))
@@ -153,14 +152,13 @@ def beta_predict(beta):
     return Yt_pseu
 
 
-def label_phase(ind):
+def label_phase(ind, beta):
     '''
     Calculate the fitness of ind, ind has the label part and beta part
     :param ind: individual to calculate the fitness
     :return: the fitness
     '''
     Yt_pseu = np.array([ind[index] for index in range(len(ind))])
-    beta = ind.beta
     mu = estimate_mu(Xs, Ys, Xt, Yt_pseu)
     N = 0
     for c in range(1, C + 1):
@@ -227,8 +225,7 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     Running GA algorithms, where each individual is a set of target pseudo labels.
     :return: the best solution of GAs.
     """
-    global ns, nt, C, Xs, Ys, Xt, Yt, YY, K, A, e, M0, L, archive
-    archive = []
+    global ns, nt, C, Xs, Ys, Xt, Yt, YY, K, A, e, M0, L
     Xs = Xsource
     Ys = Ysource
     Xt = Xtarget
@@ -260,17 +257,18 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
 
     # parameters for GA
     N_BIT = nt
-    N_GEN = 10
+    N_GEN = 20
     N_IND = 10
     MUTATION_RATE = 1.0/N_BIT
     CXPB = 0.2
     MPB = 0.8
+    N_NI = N_GEN/4
 
     pos_min = 1
     pos_max = C
 
     creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
-    creator.create("Ind", list, fitness=creator.FitnessMin, beta=list)
+    creator.create("Ind", list, fitness=creator.FitnessMin)
     creator.create("Pop", list)
 
     # for creating the population
@@ -287,44 +285,41 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     # pool = multiprocessing.Pool(4)
     # toolbox.register("map", pool.map)
 
-    # initialize some individuals by predefined classifiers
+    clf = KNeighborsClassifier(1)
+    clf.fit(Xs, Ys)
+    Yt_pseu = clf.predict(Xt)
+    best_beta = beta_phase(Yt_pseu)
+
+    # classifiers = list([])
+    # classifiers.append(KNeighborsClassifier(1))
+    # classifiers.append(SVC(kernel="linear", C=0.025, random_state=np.random.randint(2 ** 10)))
+    # classifiers.append(GaussianProcessClassifier(1.0 * RBF(1.0), random_state=np.random.randint(2 ** 10)))
+    # classifiers.append(KNeighborsClassifier(3))
+    # classifiers.append(SVC(kernel="rbf", C=1, gamma=2, random_state=np.random.randint(2 ** 10)))
+    # classifiers.append(DecisionTreeClassifier(max_depth=5, random_state=np.random.randint(2 ** 10)))
+    # classifiers.append(KNeighborsClassifier(5))
+    # classifiers.append(GaussianNB())
+    # classifiers.append(RandomForestClassifier(max_depth=5, n_estimators=10, random_state=np.random.randint(2 ** 10)))
+    # classifiers.append(AdaBoostClassifier(random_state=np.random.randint(2 ** 10)))
+    #
+    # step = N_IND/len(classifiers)
+    # for ind_index, classifier in enumerate(classifiers):
+    #     classifier.fit(Xs, Ys)
+    #     Yt_pseu = classifier.predict(Xt)
+    #     for bit_idex, value in enumerate(Yt_pseu):
+    #         pop[ind_index*step][bit_idex] = value
+
     pop = toolbox.pop(n=N_IND)
-
-    classifiers = list([])
-    classifiers.append(KNeighborsClassifier(1))
-    classifiers.append(SVC(kernel="linear", C=0.025, random_state=np.random.randint(2 ** 10)))
-    classifiers.append(GaussianProcessClassifier(1.0 * RBF(1.0), random_state=np.random.randint(2 ** 10)))
-    classifiers.append(KNeighborsClassifier(3))
-    classifiers.append(SVC(kernel="rbf", C=1, gamma=2, random_state=np.random.randint(2 ** 10)))
-    classifiers.append(DecisionTreeClassifier(max_depth=5, random_state=np.random.randint(2 ** 10)))
-    classifiers.append(KNeighborsClassifier(5))
-    classifiers.append(GaussianNB())
-    classifiers.append(RandomForestClassifier(max_depth=5, n_estimators=10, random_state=np.random.randint(2 ** 10)))
-    classifiers.append(AdaBoostClassifier(random_state=np.random.randint(2 ** 10)))
-
-    step = N_IND/len(classifiers)
-    for ind_index, classifier in enumerate(classifiers):
-        classifier.fit(Xs, Ys)
-        Yt_pseu = classifier.predict(Xt)
-        for bit_idex, value in enumerate(Yt_pseu):
-            pop[ind_index*step][bit_idex] = value
-
-    # for index, value in enumerate(Yt):
-    #     pop[len(pop)-1][index] = Yt[index]
-
-    # now initialize the beta
-    betas = toolbox.map(beta_phase, pop)
-    for beta, ind in zip(betas, pop):
-        ind.beta = beta
-
     # evaluate the initialized populations
-    fitnesses = toolbox.map(toolbox.evaluate, pop)
-    for ind, fit in zip(pop, fitnesses):
-        ind.fitness.values = fit,
+    for ind in pop:
+        ind.fitness.values = label_phase(ind, beta=best_beta),
 
     hof = tools.HallOfFame(maxsize=1)
     hof.update(pop)
+    best_fitness = sys.float_info.max,
 
+    archive = []
+    count = 0
     for g in range(N_GEN):
         # print("=========== Iteration %d ===========" % g)
         # selection
@@ -335,40 +330,37 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
         for c1, c2 in zip(offspring[::2], offspring[1::2]):
             if np.random.rand() < CXPB:
                 toolbox.crossover(c1, c2)
-                # assign small fitness of the parents to expect the
-                # children should have better fitnes
-                c1.fitness.values = np.min([c1.fitness.values[0], c2.fitness.values[0]]),
-                c2.fitness.values = c1.fitness.values[0],
 
         # applying mutation
         for mutant in offspring:
             if np.random.rand() < MPB:
-                # retain the fitness value of parent to children
                 toolbox.mutate(mutant)
 
         # now evaluate all the offspring (using label-phase)
-        fitnesses = toolbox.map(toolbox.evaluate, offspring)
-        for ind, fitness in zip(offspring, fitnesses):
-                ind.fitness.values = fitness,
+        for ind in pop:
+            ind.fitness.values = label_phase(ind, beta=best_beta),
 
         # The population is entirely replaced by the offspring
         pop[:] = tools.selBest(offspring + list(hof), len(pop))
-
-        # added duplicated solutions to archive
-        # re_initialize the duplicated solution
-        idx_dup = index_duplicate(pop)
-        for idx in idx_dup:
-            labels = [label for label in pop[idx]]
-            # if not check_contain(labels, archive):
-            #     archive.append(labels)
-            archive.append(labels)
-            pop[idx] = re_initialize()
-            pop[idx].beta = beta_phase(pop[idx])
-            pop[idx].fitness.values = label_phase(pop[idx]),
-
         hof.update(pop)
-        best_ind = tools.selBest(pop, 1)[0]
-        # print("Best fitness %f " % best_ind.fitness.values)
+        if best_fitness <= hof[0].fitness.values:
+            # if fitness is not improved, vote for new labels
+            # re-initialize the best_beta
+            count = count + 1
+            if count >= N_NI:
+                print "re_initialize", best_fitness, hof[0].fitness
+                archive.append(tools.selBest(pop, 1)[0])
+                vote_label = voting(pop)
+                best_beta = beta_phase(vote_label)
+                for ind in pop:
+                    ind.fitness.values = label_phase(ind, beta=best_beta),
+                hof.update(pop)
+                best_fitness = hof[0].fitness.values
+                count = 0
+        else:
+            print "keep going ", best_fitness, hof[0].fitness
+            best_fitness = hof[0].fitness.values
+            count = 0
 
     # print("=========== Final result============")
     best_ind = tools.selBest(pop, 1)[0]
@@ -376,55 +368,28 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     acc = np.mean(best_ind == Yt)
     print("Accuracy of the best individual: %f" % acc)
 
+    Yt_pseu = beta_predict(best_beta)
+    acc = np.mean(Yt_pseu == Yt)
+    print("Accuracy of the best beta: %f" % acc)
+
     top10 = tools.selBest(pop, 10)
     vote_label = voting(top10)
-    # for ins_index in range(len(top10[0])):
-    #     ins_labels = [row[ins_index] for row in top10]
-    #     counts = np.bincount(ins_labels)
-    #     label = np.argmax(counts)
-    #     vote_label.append(label)
     acc = np.mean(vote_label == Yt)
     print("Accuracy of the 10%% population: %f" % acc)
 
     # Use the whole population
     vote_label = voting(pop)
-    # for ins_index in range(len(pop[0])):
-    #     ins_labels = []
-    #     for m_index in range(len(pop)):
-    #         ins_labels.append(pop[m_index][ins_index])
-    #     counts = np.bincount(ins_labels)
-    #     label = np.argmax(counts)
-    #     vote_label.append(label)
     acc = np.mean(vote_label == Yt)
     print("Accuracy of the population: %f" % acc)
 
     # Use the hall of frame
     vote_label = voting(hof)
-    # for ins_index in range(len(hof[0])):
-    #     ins_labels = []
-    #     for m_index in range(len(hof)):
-    #         ins_labels.append(hof[m_index][ins_index])
-    #     counts = np.bincount(ins_labels)
-    #     label = np.argmax(counts)
-    #     vote_label.append(label)
     acc = np.mean(vote_label == Yt)
     print("Accuracy of the hof: %f" % acc)
 
-    # use the archive set
+    # use the archive
     if len(archive) > 0:
-        vote_label = []
-        ins_labels = []
-        betas = [beta_phase(member) for member in archive]
-        for beta in betas:
-            Yt_pseu = beta_predict(beta)
-            ins_labels.append(Yt_pseu)
-
-        ins_labels = np.array(ins_labels)
-        # ins_labels = np.array(archive)
-        for m_index in range(len(ins_labels[0])):
-            counts = np.bincount(ins_labels[:, m_index])
-            label = np.argmax(counts)
-            vote_label.append(label)
+        vote_label = voting(archive)
         acc = np.mean(vote_label == Yt)
         print("Accuracy of the archive: %f" % acc)
 
@@ -467,20 +432,6 @@ def check_contain(oneD, twoD):
     if len(twoD) == 0:
         return False
     return np.max([np.min(oneD == row) for row in twoD])
-
-def re_initialize():
-    new_ind = toolbox.ind()
-    if len(archive) < archive_size_min or np.random.rand() <= random_rate:
-        return new_ind
-    else:
-        pseu_labels = []
-        for ins_index in range(nt):
-            list_labels = [archive[i][ins_index] for i in range(len(archive))]
-            ins_label = np.random.choice(np.unique(list_labels))
-            pseu_labels.append(ins_label)
-        for index, label in enumerate(pseu_labels):
-            new_ind[index] = label
-        return new_ind
 
 
 def is_in(array, matrix):
@@ -544,7 +495,7 @@ if __name__ == '__main__':
                             'ICLEFc-i',
                          'ICLEFi-p', 'ICLEFp-c'])
 
-    datasets = np.array(['SURFc-d', 'SURFd-w', 'ICLEFp-c'])
+    datasets = np.array(['SURFd-w'])
     for dataset in datasets:
         print('-------------------> %s <--------------------' %dataset)
         dir = '/home/nguyenhoai2/Grid/data/TransferLearning/UnPairs/' + dataset
