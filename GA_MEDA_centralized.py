@@ -12,6 +12,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
+import Directory as Dir
 
 import GFK
 
@@ -122,7 +123,7 @@ def beta_predict(beta):
     F = np.dot(K, beta)
     Y_pseudo = np.argmax(F, axis=1) + 1
     Yt_pseu = Y_pseudo[ns:]
-    mu = estimate_mu(Xs, Ys, Xt, Yt_pseu)
+    mu = 0.5 # estimate_mu(Xs, Ys, Xt, Yt_pseu)
 
     # have to update the matrix M
     for c in range(1, C + 1):
@@ -159,7 +160,7 @@ def label_phase(ind, beta):
     :return: the fitness
     '''
     Yt_pseu = np.array([ind[index] for index in range(len(ind))])
-    mu = estimate_mu(Xs, Ys, Xt, Yt_pseu)
+    mu = 0.5 # estimate_mu(Xs, Ys, Xt, Yt_pseu)
     N = 0
     for c in range(1, C + 1):
         e = np.zeros((ns + nt, 1))
@@ -196,7 +197,7 @@ def beta_phase(ind):
     :return: the beta matrix based on the ind
     '''
     Yt_pseu = np.array([ind[index] for index in range(len(ind))])
-    mu = estimate_mu(Xs, Ys, Xt, Yt_pseu)
+    mu = 0.5 # estimate_mu(Xs, Ys, Xt, Yt_pseu)
     N = 0
     for c in range(1, C + 1):
         e = np.zeros((ns + nt, 1))
@@ -257,7 +258,7 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
 
     # parameters for GA
     N_BIT = nt
-    N_GEN = 20
+    N_GEN = 10
     N_IND = 10
     MUTATION_RATE = 1.0/N_BIT
     CXPB = 0.2
@@ -310,9 +311,12 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     #         pop[ind_index*step][bit_idex] = value
 
     pop = toolbox.pop(n=N_IND)
+    for index in range(len(pop[0])):
+        pop[0][index] = Yt_pseu[index]
     # evaluate the initialized populations
     for ind in pop:
         ind.fitness.values = label_phase(ind, beta=best_beta),
+
 
     hof = tools.HallOfFame(maxsize=1)
     hof.update(pop)
@@ -495,10 +499,9 @@ if __name__ == '__main__':
                             'ICLEFc-i',
                          'ICLEFi-p', 'ICLEFp-c'])
 
-    datasets = np.array(['SURFd-w'])
     for dataset in datasets:
         print('-------------------> %s <--------------------' %dataset)
-        dir = '/home/nguyenhoai2/Grid/data/TransferLearning/UnPairs/' + dataset
+        dir = Dir.dir + dataset
         source = np.genfromtxt(dir + "/Source", delimiter=",")
         m = source.shape[1] - 1
         Xs = source[:, 0:m]

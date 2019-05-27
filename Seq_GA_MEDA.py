@@ -15,6 +15,7 @@ from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn import svm
 from sklearn.neighbors import KNeighborsClassifier
+import Directory as Dir
 
 
 # from scoop import futures
@@ -74,7 +75,7 @@ rho = 1.0
 eta = 0.1
 p = 10
 gamma = 0.5
-T = 10
+# T = 10
 
 Xs = 0
 Ys = 0
@@ -133,6 +134,7 @@ def reverse_clsasification(Yt_input):
 
 
 def estimate_mu(_X1, _Y1, _X2, _Y2):
+    return 0.5
     adist_m = proxy_a_distance(_X1, _X2)
     C = len(np.unique(_Y1))
     epsilon = 1e-3
@@ -152,7 +154,7 @@ def estimate_mu(_X1, _Y1, _X2, _Y2):
     return mu
 
 
-def meda(Yt_init):
+def meda(Yt_init, T):
     """
     Calculate the fitness function of a label array of target instances
     :param Yt_pseu: the pseudolabel of target instances, which are in a chromosome.
@@ -245,7 +247,7 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     # knn.fit(Xt, cls)
     # Ys_re = knn.predict(Xs)
     # print("Reverse accuracy %f" %(np.mean(Ys_re == Ys)))
-    Yt_pseu = meda(cls)
+    Yt_pseu = meda(cls, T=10)
     acc = np.mean(Yt_pseu == Yt)
     print("MEDA accuracy: %f" %acc)
 
@@ -355,9 +357,30 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     # print("=========== Final result============")
 
     Yt_pseu = [label for label in hof[0]]
-    Yt_pseu = meda(Yt_init=Yt_pseu)
+    Yt_pseu = meda(Yt_init=Yt_pseu, T=10)
     acc = np.mean(Yt_pseu == Yt)
     print ("GA-MEDA accuracy: %f" %acc)
+
+    Yt_en = []
+    for ind in pop:
+        Yt_pseu = [label for label in ind]
+        Yt_pseu = meda(Yt_init=Yt_pseu, T=1)
+        Yt_en.append(Yt_pseu)
+    Yt_en = np.array(Yt_en)
+    vote_label = voting(Yt_en)
+    acc = np.mean(vote_label == Yt)
+    print("Ensemb(1)-GA-MEDA accuracy: %f" %acc)
+
+    Yt_en = []
+    for ind in pop:
+        Yt_pseu = [label for label in ind]
+        Yt_pseu = meda(Yt_init=Yt_pseu, T=10)
+        Yt_en.append(Yt_pseu)
+    Yt_en = np.array(Yt_en)
+    vote_label = voting(Yt_en)
+    acc = np.mean(vote_label == Yt)
+    print("Ensemb(10)-GA-MEDA accuracy: %f" % acc)
+
 
     # list_labels = []
     # for ind in pop:
@@ -388,6 +411,21 @@ def is_in(array, matrix):
     else:
         return np.any(np.sum(np.abs(matrix-array), axis=1) == 0)
 
+
+def voting(set_labels):
+    vote_label = []
+    ins_labels = []
+    for labels in set_labels:
+        tmp_labels = [labels[index] for index in range(len(labels))]
+        ins_labels.append(tmp_labels)
+    ins_labels = np.array(ins_labels)
+
+    for m_index in range(len(ins_labels[0])):
+        counts = np.bincount(ins_labels[:, m_index])
+        label = np.argmax(counts)
+        vote_label.append(label)
+
+    return vote_label
 
 def simliarity_matrix(data, k):
     nn = neighbors.NearestNeighbors(n_neighbors=k, algorithm='brute', metric='cosine')
@@ -429,19 +467,16 @@ if __name__ == '__main__':
     run = int(sys.argv[1])
     random_seed = 1617 * run
 
-    datasets = np.array(['GasSensor1-4', 'GasSensor1-2', 'GasSensor1-3',
-                         'GasSensor1-5', 'GasSensor1-6', 'GasSensor1-7',
-                         'GasSensor1-8', 'GasSensor1-9', 'GasSensor1-10',
-                         'SURFa-c', 'SURFa-d', 'SURFa-w', 'SURFc-a',
+    datasets = np.array(['SURFa-c', 'SURFa-d', 'SURFa-w', 'SURFc-a',
                          'SURFc-d', 'SURFc-w', 'SURFd-a', 'SURFd-c',
                          'SURFd-w', 'SURFw-a', 'SURFw-c', 'SURFw-d',
                          'MNIST-USPS', 'USPS-MNIST'])
 
-    datasets = np.array([ 'ICLEFp-c'])
+    datasets = np.array(['SURFw-d', 'ICLEFc-p','ICLEFp-i','ICLEFi-c','SURFa-c', 'SURFc-d', 'SURFw-a'])
 
     for dataset in datasets:
         print("==========%s=========" %dataset)
-        dir = '/home/nguyenhoai2/Grid/data/TransferLearning/UnPairs/' + dataset
+        dir = Dir.dir + dataset
         source = np.genfromtxt(dir + "/Source", delimiter=",")
         m = source.shape[1] - 1
         Xs = source[:, 0:m]
