@@ -162,10 +162,10 @@ class MEDA:
             Cls = Cls[ns:]
             acc = np.mean(Cls == Yt.ravel())
             list_acc.append(acc)
-            self.out.write("Iteration %d, Fitness %f\n" % (t, fitness))
+            # self.out.write("Iteration %d, Fitness %f\n" % (t, fitness))
             # print('MEDA iteration [{}/{}]: mu={:.2f}, Acc={:.4f}'.format(t, self.T, mu, acc))
             # print('=============================================')
-            print('-----%d%%' %(t+1)*10,)
+            # print('-----%d%%' %(t+1)*10,)
         return acc, Cls, list_acc
 
 
@@ -199,7 +199,7 @@ def laplacian_matrix(data, k):
 
 
 if __name__ == '__main__':
-    datasets = np.array(['ICLEFc-i'])
+    datasets = np.array(['ICLEFi-p'])
     # datasets = np.array(['GasSensor1-4', 'GasSensor1-2', 'GasSensor1-3',
     #                      'GasSensor1-5', 'GasSensor1-6', 'GasSensor1-7',
     #                      'GasSensor1-8', 'GasSensor1-9', 'GasSensor1-10',
@@ -207,33 +207,36 @@ if __name__ == '__main__':
     #                      'SURFc-d', 'SURFc-w', 'SURFd-a', 'SURFd-c',
     #                      'SURFd-w', 'SURFw-a', 'SURFw-c', 'SURFw-d',
     #                      'MNIST-USPS', 'USPS-MNIST'])
+    dims = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 
-    for dataset in datasets:
-        source = np.genfromtxt("/home/nguyenhoai2/Grid/data/TransferLearning/UnPairs/" + dataset + "/Source",
+    for dim in dims:
+        for dataset in datasets:
+            source = np.genfromtxt("/home/nguyenhoai2/Grid/data/TransferLearning/UnPairs/" + dataset + "/Source",
                                delimiter=",")
-        m = source.shape[1] - 1
-        Xs = source[:, 0:m]
-        Ys = np.ravel(source[:, m:m + 1])
-        Ys = np.array([int(label) for label in Ys])
+            m = source.shape[1] - 1
+            Xs = source[:, 0:m]
+            Ys = np.ravel(source[:, m:m + 1])
+            Ys = np.array([int(label) for label in Ys])
 
-        target = np.genfromtxt("/home/nguyenhoai2/Grid/data/TransferLearning/UnPairs/" + dataset + "/Target",
+            target = np.genfromtxt("/home/nguyenhoai2/Grid/data/TransferLearning/UnPairs/" + dataset + "/Target",
                                delimiter=",")
-        Xt = target[:, 0:m]
-        Yt = np.ravel(target[:, m:m + 1])
-        Yt = np.array([int(label) for label in Yt])
+            Xt = target[:, 0:m]
+            Yt = np.ravel(target[:, m:m + 1])
+            Yt = np.array([int(label) for label in Yt])
 
-        C = np.unique(Ys)
-        if C > np.max(Ys):
-            Ys = Ys + 1
-            Yt = Yt + 1
+            C = len(np.unique(Ys))
+            if C > np.max(Ys):
+                Ys = Ys + 1
+                Yt = Yt + 1
 
-        if not os.path.exists('/home/nguyenhoai2/Grid/results/R-MEDA/'+dataset):
-            os.mkdir('/home/nguyenhoai2/Grid/results/R-MEDA/'+dataset)
-        file = open("/home/nguyenhoai2/Grid/results/R-MEDA/" + dataset + "/MEDA_iteration.txt", "w")
-        meda = MEDA(kernel_type='rbf', dim=20, lamb=10, rho=1.0, eta=0.1, p=10, gamma=0.5, T=10, out=file)
-        acc, ypre, list_acc = meda.fit_predict(Xs, Ys, Xt, Yt)
-        file.write(str(acc))
-        file.close()
+            if not os.path.exists('/home/nguyenhoai2/Grid/results/R-MEDA/'+dataset):
+                os.mkdir('/home/nguyenhoai2/Grid/results/R-MEDA/'+dataset)
+            file = open("/home/nguyenhoai2/Grid/results/R-MEDA/" + dataset + "/MEDA_iteration.txt", "w")
+            meda = MEDA(kernel_type='rbf', dim=dim, lamb=10, rho=1.0, eta=0.1, p=10, gamma=0.5, T=10, out=file)
+            acc, ypre, list_acc = meda.fit_predict(Xs, Ys, Xt, Yt)
+            print('d=%d with acc=%f' %(dim,acc))
+            # file.write(str(acc))
+            file.close()
 
     # source_names = ['BaseVsAuto', 'AutoVsReligion', 'HockeyVsReligion']
     # target_names = ['HockeyVsMoto', 'MotoVsMidEast', 'BaseVsPolitic ']

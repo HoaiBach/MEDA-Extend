@@ -2,7 +2,7 @@ import random
 
 import numpy as np
 from deap import base, creator, tools
-from sklearn import svm, metrics, neighbors
+from sklearn import svm, metrics, neighbors, cluster
 from scipy.spatial.distance import pdist,squareform
 
 import GFK
@@ -111,28 +111,6 @@ def manifold(Yt_input):
                    for i in range(len(sim)) for j in range(len(sim))])
 
 
-def reverse_clsasification(Yt_input):
-    if np.unique(Yt_input).shape[0] <= 1:
-        return 1
-    Yt_pseu = np.array(np.copy(Yt_input))
-    classifiers = list([])
-    classifiers.append(KNeighborsClassifier(1))
-    classifiers.append(SVC(kernel="linear", C=0.025, random_state=np.random.randint(2 ** 10)))
-    classifiers.append(GaussianProcessClassifier(1.0 * RBF(1.0), random_state=np.random.randint(2 ** 10)))
-    classifiers.append(KNeighborsClassifier(3))
-    classifiers.append(SVC(kernel="rbf", C=1, gamma=2, random_state=np.random.randint(2 ** 10)))
-    classifiers.append(DecisionTreeClassifier(max_depth=5, random_state=np.random.randint(2 ** 10)))
-    classifiers.append(KNeighborsClassifier(5))
-    classifiers.append(GaussianNB())
-    classifiers.append(RandomForestClassifier(max_depth=5, n_estimators=10, random_state=np.random.randint(2 ** 10)))
-    classifiers.append(AdaBoostClassifier(random_state=np.random.randint(2 ** 10)))
-    sum = 0.0
-    for clf in classifiers:
-        clf.fit(Xt, Yt_pseu)
-        sum = sum + np.mean(clf.predict(Xs) == Ys)
-    return 1.0 - sum/len(classifiers)
-
-
 def estimate_mu(_X1, _Y1, _X2, _Y2):
     return 0.5
     adist_m = proxy_a_distance(_X1, _X2)
@@ -204,17 +182,20 @@ def meda(Yt_init, T):
     return Yt_pseu
 
 
-def evolve(Xsource, Ysource, Xtarget, Ytarget):
-    """
-    Running GA algorithms, where each individual is a set of target pseudo labels.
-    :return: the best solution of GAs.
-    """
+def Kmean_MEDA(Xsource, Ysource, Xtarget, Ytarget):
+    '''
+    :param Xs: a numpy array size ns*m
+    :param Ys: a numpy array size 1*ns
+    :param Xt: a numpy array size nt*m
+    :param Yt: a numpy array size 1*nt
+    :return: accuracy
+    '''
     global ns, nt, C, Xs, Ys, Xt, Yt, YY, K, A, e, M0, L, archive, sim
     Xs = Xsource
     Ys = Ysource
     Xt = Xtarget
     Yt = Ytarget
-    ns, nt = Xs.shape[0], Xt.shape[0]
+    ns, nt, m = Xs.shape[0], Xt.shape[0], Xs.shape[1]
     C = len(np.unique(Ys))
 
     # Transform data using gfk
@@ -225,206 +206,16 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     X /= np.linalg.norm(X, axis=0)
     Xs = X[:, :ns].T
     Xt = X[:, ns:].T
+    X = X.T
 
-    # build some matrices that are not changed
-    K = kernel(kernel_type, X, X2=None, gamma=gamma)
-    A = np.diagflat(np.vstack((np.ones((ns, 1)), np.zeros((nt, 1)))))
-    e = np.vstack((1.0 / ns * np.ones((ns, 1)), -1.0 / nt * np.ones((nt, 1))))
-    M0 = e * e.T * C
-    L = laplacian_matrix(X.T, p)
-    sim = simliarity_matrix(X.T, p)
-
-    YY = np.zeros((ns, C))
-    for c in range(1, C + 1):
-        ind = np.where(Ys == c)
-        YY[ind, c - 1] = 1
-    YY = np.vstack((YY, np.zeros((nt, C))))
-
-    # for testing
-    knn = KNeighborsClassifier(1)
-    knn.fit(Xs, Ys)
-    cls = knn.predict(Xt)
-    # knn.fit(Xt, cls)
-    # Ys_re = knn.predict(Xs)
-    # print("Reverse accuracy %f" %(np.mean(Ys_re == Ys)))
-    Yt_pseu = meda(cls, T=10)
-    acc = np.mean(Yt_pseu == Yt)
-    print("MEDA accuracy: %f" %acc)
-
-    # parameters for GA
-    N_BIT = nt
-    N_GEN = 10
-    N_IND = 10
-    MUTATION_RATE = 1.0/N_BIT
-    CXPB = 0.9
-    MPB = 0.1
-
-    pos_min = 1
-    pos_max = C
-
-    creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
-    creator.create("Ind", list, fitness=creator.FitnessMin)
-    creator.create("Pop", list)
-
-    # for creating the population
-    toolbox.register("bit", random.randint, a=pos_min, b=pos_max)
-    toolbox.register("ind", tools.initRepeat, creator.Ind, toolbox.bit, n=N_BIT)
-    toolbox.register("pop", tools.initRepeat, creator.Pop, toolbox.ind)
-    # for evaluation
-    toolbox.register("evaluate", reverse_clsasification)
-    # for genetic operators
-    toolbox.register("select", tools.selTournament, tournsize=3)
-    toolbox.register("crossover", tools.cxUniform, indpb=0.5 )
-    toolbox.register("mutate", tools.mutUniformInt, low=pos_min, up=pos_max,
-                     indpb=MUTATION_RATE)
-    # pool = multiprocessing.Pool(4)
-    # toolbox.register("map", pool.map)
-
-    # initialize some individuals by predefined classifiers
-    pop = toolbox.pop(n=N_IND)
-
-    classifiers = list([])
-    classifiers.append(KNeighborsClassifier(1))
-    classifiers.append(SVC(kernel="linear", C=0.025, random_state=np.random.randint(2 ** 10)))
-    classifiers.append(GaussianProcessClassifier(1.0 * RBF(1.0), random_state=np.random.randint(2 ** 10)))
-    classifiers.append(KNeighborsClassifier(3))
-    classifiers.append(SVC(kernel="rbf", C=1, gamma=2, random_state=np.random.randint(2 ** 10)))
-    classifiers.append(DecisionTreeClassifier(max_depth=5, random_state=np.random.randint(2 ** 10)))
-    classifiers.append(KNeighborsClassifier(5))
-    classifiers.append(GaussianNB())
-    classifiers.append(RandomForestClassifier(max_depth=5, n_estimators=10, random_state=np.random.randint(2 ** 10)))
-    classifiers.append(AdaBoostClassifier(random_state=np.random.randint(2 ** 10)))
-
-    class_labels = []
-    for classifier in classifiers:
-        classifier.fit(Xs, Ys)
-        Yt_pseu = classifier.predict(Xt)
-        class_labels.append(Yt_pseu)
-    class_labels = np.asarray(class_labels)
-
-    # calculate the accuracy of ensemble meda
-    en_meda = []
-    for Yt_init in class_labels:
-        Yt_pseu = meda(Yt_init, T=10)
-        en_meda.append(Yt_pseu)
-    Yt_pseu = voting(en_meda)
-    acc = np.mean(Yt_pseu == Yt)
-    print("En-MEDA accuracy: %f" %acc)
-
-    step = N_IND/len(classifiers)
-    for ind_index in range(len(classifiers)):
-        if ind_index * step < len(pop):
-            Yt_pseu = class_labels[ind_index]
-            for bit_idex, value in enumerate(Yt_pseu):
-                pop[ind_index*step][bit_idex] = value
-        else:
-            break
-
-    # for index, value in enumerate(Yt):
-    #     pop[len(pop)-1][index] = Yt[index]
-
-    # evaluate the initialized populations
-    start_fitness = toolbox.map(toolbox.evaluate, pop)
-    for ind, fit in zip(pop, start_fitness):
-        ind.fitness.values = fit,
-
-    hof = tools.HallOfFame(maxsize=1)
-    hof.update(pop)
-
-    for g in range(N_GEN):
-        # print("=========== Iteration %d ===========" % g)
-
-        # selection
-        offspring = toolbox.select(pop, len(pop))
-        offspring = map(toolbox.clone, offspring)
-
-        # applying crossover
-        for c1, c2 in zip(offspring[::2], offspring[1::2]):
-            if np.random.rand() < CXPB:
-                toolbox.crossover(c1, c2)
-                del c1.fitness.values
-                del c2.fitness.values
-        # applying mutation
-        for mutant in offspring:
-            if np.random.rand() < MPB:
-                toolbox.mutate(mutant)
-                del mutant.fitness.values
-
-        # evaluate all the offspring, since the evaluation creates new positions
-        fits = toolbox.map(toolbox.evaluate, offspring)
-        for ind_index, fit in enumerate(fits):
-            ind = offspring[ind_index]
-            ind.fitness.values = fit,
-
-        # The population is entirely replaced by the offspring
-        pop[:] = tools.selBest(offspring + list(hof), len(pop))
-        hof.update(pop)
-        best_ind = tools.selBest(pop, 1)[0]
-        # print("Best fitness %f " % best_ind.fitness.values)
-
-        # Find the distance between ind
-        dist = 0
-        for i1 in range(len(pop)):
-            for i2 in range(len(pop)):
-                dist += np.linalg.norm(np.array(pop[i1])-np.array(pop[i2]))
-        # print("Distance %f" %(dist/len(pop)**2))
-
-    # print("=========== Final result============")
-
-    Yt_pseu = [label for label in hof[0]]
-    Yt_pseu = meda(Yt_init=Yt_pseu, T=10)
-    acc = np.mean(Yt_pseu == Yt)
-    print ("GA-MEDA accuracy: %f" %acc)
-
-    Yt_en = []
-    for ind in pop:
-        Yt_pseu = [label for label in ind]
-        Yt_pseu = meda(Yt_init=Yt_pseu, T=1)
-        Yt_en.append(Yt_pseu)
-    Yt_en = np.array(Yt_en)
-    vote_label = voting(Yt_en)
-    acc = np.mean(vote_label == Yt)
-    print("Ensemb(1)-GA-MEDA accuracy: %f" %acc)
-
-    Yt_en = []
-    for ind in pop:
-        Yt_pseu = [label for label in ind]
-        Yt_pseu = meda(Yt_init=Yt_pseu, T=10)
-        Yt_en.append(Yt_pseu)
-    Yt_en = np.array(Yt_en)
-    vote_label = voting(Yt_en)
-    acc = np.mean(vote_label == Yt)
-    print("Ensemb(10)-GA-MEDA accuracy: %f" % acc)
-
-
-    # list_labels = []
-    # for ind in pop:
-    #     Yt_pseu = [label for label in ind]
-    #     list_labels.append(meda(Yt_init=Yt_pseu))
-    #
-    # vote_label = []
-    # for ins_index in range(len(list_labels[0])):
-    #     ins_labels = [row[ins_index] for row in list_labels]
-    #     counts = np.bincount(ins_labels)
-    #     label = np.argmax(counts)
-    #     vote_label.append(label)
-    #
-    # acc = np.mean(vote_label == Yt)
-    # print("Accuracy ensemble: %f" % acc)
-
-
-def is_in(array, matrix):
-    """
-    Check wherether an array matches a row in the matrix
-    Both represented by a numpy array
-    :param array:
-    :param matrix:
-    :return:
-    """
-    if len(matrix) == 0:
-        return False
-    else:
-        return np.any(np.sum(np.abs(matrix-array), axis=1) == 0)
+    # perform clustering
+    kmeans = cluster.KMeans(n_clusters=C, random_state=0, max_iter=200).fit(X)
+    source_cluster_kmeans = kmeans.labels_[:ns]
+    # dbscan = cluster.DBSCAN(eps=3, min_samples=3).fit(X)
+    # source_cluster_dbscan = dbscan.labels_[:ns]
+    aggc = cluster.AgglomerativeClustering(n_clusters=C, linkage='complete').fit(X)
+    source_cluster_aggc = aggc.labels_[:ns]
+    print 'test'
 
 
 def voting(set_labels):
@@ -517,5 +308,5 @@ if __name__ == '__main__':
         np.random.seed(random_seed)
         random.seed(random_seed)
 
-        evolve(Xs, Ys, Xt, Yt)
+        Kmean_MEDA(Xs, Ys, Xt, Yt)
 
