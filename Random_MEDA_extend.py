@@ -15,6 +15,7 @@ from sklearn.tree import DecisionTreeClassifier
 import GFK
 import MEDA
 import scipy.stats as stat
+import Directory as Dir
 
 
 # from scoop import futures
@@ -530,7 +531,7 @@ if __name__ == '__main__':
                                      
     for dataset in datasets:
         print('-------------------> %s <--------------------' % dataset)
-        dir = '/home/nguyenhoai2/Grid/data/TransferLearning/UnPairs/' + dataset
+        dir = Dir.dir + dataset
         source = np.genfromtxt(dir + "/Source", delimiter=",")
         m = source.shape[1] - 1
         Xs = source[:, 0:m]
@@ -549,11 +550,13 @@ if __name__ == '__main__':
 
         Xs = Xs.T
         Xs /= np.sum(Xs, axis=0)
-        Xs = Xs
-        Xs = stat.zscore(Xs, axis=1)
+        Xs = Xs.T
+        Xs = stat.zscore(Xs)
 
+        Xt = Xt.T
         Xt /= np.sum(Xt, axis=0)
-        Xt = stat.zscore(Xt, axis=1)
+        Xt = Xt.T
+        Xt = stat.zscore(Xt)
 
         #
         # Xt = Xt.T
