@@ -145,16 +145,16 @@ class MEDA:
             Beta = np.dot(np.linalg.inv(left), np.dot(E, YY))
 
             # For testing
-            Ytest = np.copy(YY)
-            for c in range(1, C + 1):
-                yy = Cls == c
-                inds = np.where(yy == True)
-                inds = [item + ns for item in inds]
-                Ytest[inds, c - 1] = 1
-            SRM = np.linalg.norm(np.dot(Ytest.T - np.dot(Beta.T, K), E)) \
-                  + self.eta * np.linalg.multi_dot([Beta.T, K, Beta]).trace()
-            MMD =  np.linalg.multi_dot([Beta.T, np.linalg.multi_dot([K, self.lamb *M + self.rho * L, K]), Beta]).trace()
-            fitness = SRM + MMD
+            # Ytest = np.copy(YY)
+            # for c in range(1, C + 1):
+            #     yy = Cls == c
+            #     inds = np.where(yy == True)
+            #     inds = [item + ns for item in inds]
+            #     Ytest[inds, c - 1] = 1
+            # SRM = np.linalg.norm(np.dot(Ytest.T - np.dot(Beta.T, K), E)) \
+            #       + self.eta * np.linalg.multi_dot([Beta.T, K, Beta]).trace()
+            # MMD =  np.linalg.multi_dot([Beta.T, np.linalg.multi_dot([K, self.lamb *M + self.rho * L, K]), Beta]).trace()
+            # fitness = SRM + MMD
             # print(fitness, SRM, MMD)
 
             F = np.dot(K, Beta)
@@ -199,7 +199,7 @@ def laplacian_matrix(data, k):
 
 
 if __name__ == '__main__':
-    datasets = np.array(['ICLEFi-p'])
+    datasets = np.array(['SURFd-w'])
     # datasets = np.array(['GasSensor1-4', 'GasSensor1-2', 'GasSensor1-3',
     #                      'GasSensor1-5', 'GasSensor1-6', 'GasSensor1-7',
     #                      'GasSensor1-8', 'GasSensor1-9', 'GasSensor1-10',
@@ -207,7 +207,7 @@ if __name__ == '__main__':
     #                      'SURFc-d', 'SURFc-w', 'SURFd-a', 'SURFd-c',
     #                      'SURFd-w', 'SURFw-a', 'SURFw-c', 'SURFw-d',
     #                      'MNIST-USPS', 'USPS-MNIST'])
-    dims = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+    dims = [20]
 
     for dim in dims:
         for dataset in datasets:
@@ -228,6 +228,11 @@ if __name__ == '__main__':
             if C > np.max(Ys):
                 Ys = Ys + 1
                 Yt = Yt + 1
+
+            clf = neighbors.KNeighborsClassifier(n_neighbors=1)
+            clf.fit(Xs, Ys)
+            acc = np.mean(clf.predict(Xt)==Yt)
+            print('Accuracy of 1NN= %f' %acc)
 
             if not os.path.exists('/home/nguyenhoai2/Grid/results/R-MEDA/'+dataset):
                 os.mkdir('/home/nguyenhoai2/Grid/results/R-MEDA/'+dataset)

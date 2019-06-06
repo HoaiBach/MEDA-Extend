@@ -512,14 +512,7 @@ if __name__ == '__main__':
     run = int(sys.argv[1])
     random_seed = 1617 * run
 
-    datasets = np.array(['SURFa-c', 'SURFa-d', 'SURFa-w', 'SURFc-a',
-                         'SURFc-d', 'SURFc-w', 'SURFd-a', 'SURFd-c',
-                         'SURFd-w', 'SURFw-a', 'SURFw-c', 'SURFw-d',
-                         'MNIST-USPS', 'USPS-MNIST', 'ICLEFc-i', 'ICLEFc-p',
-                         'ICLEFi-c', 'ICLEFi-p', 'ICLEFp-c', 'ICLEFp-i',
-                         'Office31amazon-dslr', 'Office31dslr-webcam', 'Office31webcam-amazon',
-                         'OfficeHomeArt-Clipart', 'OfficeHomeClipart-Product',
-                         'OfficeHomeProduct-RealWorld', 'OfficeHomeRealWorld-Art'])
+    datasets = np.array(['ICLEFc-i'])
 
     # datasets = np.array(['SURFa-c',
     #                      'SURFc-d',
@@ -527,7 +520,7 @@ if __name__ == '__main__':
     #                      'ICLEFc-i',
     #                      'ICLEFi-p', 'ICLEFp-c'])
 
-    datasets = np.array(['ICLEFc-i'])
+    # datasets = np.array(['ICLEFc-i'])
                                      
     for dataset in datasets:
         print('-------------------> %s <--------------------' % dataset)
@@ -568,10 +561,19 @@ if __name__ == '__main__':
         # Xs = X[:, :len(Xs)].T
         # Xt = X[:, len(Xs):].T
 
+        Xs = np.nan_to_num(Xs)
+        Xt = np.nan_to_num(Xt)
         knn = KNeighborsClassifier(1).fit(Xs,Ys)
         print(np.mean(knn.predict(Xt)==Yt))
 
-        np.random.seed(random_seed)
-        random.seed(random_seed)
+        dims = [20]
+        for dim in dims:
+            file = 'test.txt'
+            meda = MEDA.MEDA(kernel_type='rbf', dim=dim, lamb=10, rho=1.0, eta=0.1, p=10, gamma=0.5, T=10, out=file)
+            acc, ypre, list_acc = meda.fit_predict(Xs, Ys, Xt, Yt)
+            print('d=%d with acc=%f' % (dim, acc))
 
-        evolve(Xs, Ys, Xt, Yt)
+        # np.random.seed(random_seed)
+        # random.seed(random_seed)
+        # 
+        # evolve(Xs, Ys, Xt, Yt)
