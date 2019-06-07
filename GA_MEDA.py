@@ -14,6 +14,7 @@ from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 
+import Helpers
 import GFK
 import MEDA
 
@@ -293,7 +294,7 @@ def beta_phase(ind):
     return beta
 
 
-def evolve(Xsource, Ysource, Xtarget, Ytarget):
+def evolve(Xsource, Ysource, Xtarget, Ytarget, file, mutation_rate, full_init):
     """
     Running GA algorithms, where each individual is a set of target pseudo labels.
     :return: the best solution of GAs.
@@ -321,7 +322,7 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     A = np.diagflat(np.vstack((np.ones((ns, 1)), np.zeros((nt, 1)))))
     e = np.vstack((1.0 / ns * np.ones((ns, 1)), -1.0 / nt * np.ones((nt, 1))))
     M0 = e * e.T * C
-    L = laplacian_matrix(X.T, p)
+    L = Helpers.laplacian_matrix(X.T, p)
 
     YY = np.zeros((ns, C))
     for c in range(1, C + 1):
@@ -329,16 +330,16 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
         YY[ind, c - 1] = 1
     YY = np.vstack((YY, np.zeros((nt, C))))
 
+    pos_min = 1
+    pos_max = C
+
     # parameters for GA
     N_BIT = nt
     N_GEN = 10
     N_IND = 100
-    MUTATION_RATE = 1.0/N_BIT
-    CXPB = 0.1
-    MPB = 0.9
-
-    pos_min = 1
-    pos_max = C
+    MUTATION_RATE = 1.0/N_BIT*C
+    MPB = mutation_rate
+    CXPB = 1-mutation_rate
 
     creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
     creator.create("Ind", list, fitness=creator.FitnessMin)
@@ -352,12 +353,11 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     toolbox.register("evaluate", fitness_evaluation)
     # for genetic operators
     toolbox.register("select", tools.selTournament, tournsize=3)
-    toolbox.register("crossover", tools.cxUniform, indpb=0.5 )
+    toolbox.register("crossover", tools.cxUniform, indpb=0.5)
     toolbox.register("mutate", tools.mutUniformInt, low=pos_min, up=pos_max,
                      indpb=MUTATION_RATE)
     # pool = multiprocessing.Pool(4)
     # toolbox.register("map", pool.map)
-
     # initialize some individuals by predefined classifiers
     pop = toolbox.pop(n=N_IND)
 
@@ -380,6 +380,8 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
         for bit_idex, value in enumerate(Yt_pseu):
             pop[ind_index*step][bit_idex] = value
 
+    Helpers.opposite_init(pop, pos_min, pos_max, full_init)
+
     # evaluate the initialized populations
     fitnesses = toolbox.map(toolbox.evaluate, pop)
     for ind, fit in zip(pop, fitnesses):
@@ -389,7 +391,7 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
     hof.update(pop)
 
     for g in range(N_GEN):
-        print("=========== Iteration %d ===========" % g)
+        file.write("*****Iteration %d*****" % g)
         # selection
         offspring = toolbox.select(pop, len(pop))
         offspring = map(toolbox.clone, offspring)
@@ -425,183 +427,99 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget):
         # The population is entirely replaced by the offspring
         pop[:] = tools.selBest(offspring + list(hof), len(pop))
         hof.update(pop)
-        print('Best fitness %d' %(hof[0].fitness.values[0]))
+        file.write('Average distance: %f' %(Helpers.pop_distance(pop)))
+        file.write('Best fitness: %f' %(hof[0].fitness.values[0]))
 
         best_ind = tools.selBest(pop, 1)[0]
         acc = np.mean(best_ind == Yt)
-        print("Accuracy of the best individual: %f" % acc)
+        file.write("Accuracy of the best individual: %f" % acc)
 
         top10 = tools.selBest(pop, 10)
-        vote_label = voting(top10)
+        vote_label = Helpers.voting(top10)
         acc = np.mean(vote_label == Yt)
-        print("Accuracy of the 10%% population: %f" % acc)
+        file.write("Accuracy of the 10%% population: %f" % acc)
 
         # Use the whole population
-        vote_label = voting(pop)
+        vote_label = Helpers.voting(pop)
         acc = np.mean(vote_label == Yt)
-        print("Accuracy of the population: %f" % acc)
+        file.write("Accuracy of the population: %f" % acc)
 
-        # Use the hall of frame
-        vote_label = voting(hof)
-        acc = np.mean(vote_label == Yt)
-        print("Accuracy of the hof: %f" % acc)
-
-    print("=========== Final result============")
+    file.write("*****Final result*****")
     best_ind = tools.selBest(pop, 1)[0]
     acc = np.mean(best_ind == Yt)
-    print("Accuracy of the best individual: %f" % acc)
+    file.write("Accuracy of the best individual: %f" % acc)
 
     top10 = tools.selBest(pop, 10)
-    vote_label = voting(top10)
+    vote_label = Helpers.voting(top10)
     acc = np.mean(vote_label == Yt)
-    print("Accuracy of the 10%% population: %f" % acc)
+    file.write("Accuracy of the 10%% population: %f" % acc)
 
     # Use the whole population
-    vote_label = voting(pop)
+    vote_label = Helpers.voting(pop)
     acc = np.mean(vote_label == Yt)
-    print("Accuracy of the population: %f" % acc)
-
-    # Use the hall of frame
-    vote_label = voting(hof)
-    acc = np.mean(vote_label == Yt)
-    print("Accuracy of the hof: %f" % acc)
-
-def voting(set_labels):
-    vote_label = []
-    ins_labels = []
-    for labels in set_labels:
-        tmp_labels = [labels[index] for index in range(len(labels))]
-        ins_labels.append(tmp_labels)
-    ins_labels = np.array(ins_labels)
-
-    for m_index in range(len(ins_labels[0])):
-        counts = np.bincount(ins_labels[:, m_index])
-        label = np.argmax(counts)
-        vote_label.append(label)
-
-    return vote_label
-
-def index_duplicate(pop):
-    '''
-    :param pop: population
-    :return: indices of the duplicated solutions
-    '''
-    seen = []
-    idx_dup = []
-    for idx, ind in enumerate(pop):
-        if check_contain(ind, seen):
-            idx_dup.append(idx)
-        else:
-            seen.append(ind)
-    return idx_dup
-
-def check_contain(oneD, twoD):
-    '''
-    Check whethere oneD is a row in twoD
-    :param oneD: an 1D array
-    :param twoD: an 2D array
-    :return:
-    '''
-    if len(twoD) == 0:
-        return False
-    return np.max([np.min(oneD == row) for row in twoD])
-
-def is_in(array, matrix):
-    """
-    Check wherether an array matches a row in the matrix
-    Both represented by a numpy array
-    :param array:
-    :param matrix:
-    :return:
-    """
-    if len(matrix) == 0:
-        return False
-    else:
-        return np.any(np.sum(np.abs(matrix-array), axis=1) == 0)
-
-
-def laplacian_matrix(data, k):
-    """
-    :param data: containing data points,
-    :param k: the number of neighbors considered (this distance metric is cosine,
-    and the weights are measured by cosine)
-    :return:
-    """
-    nn = neighbors.NearestNeighbors(n_neighbors=k, algorithm='brute', metric='cosine')
-    nn.fit(data)
-    dist, nn = nn.kneighbors(return_distance=True)
-    sim = np.zeros((len(data), len(data)))
-    for ins_index in range(len(sim)):
-        dist_row = dist[ins_index]
-        nn_row = nn[ins_index]
-        for dist_value, ind_index in zip(dist_row, nn_row):
-            sim[ins_index][ind_index] = 1.0 - dist_value
-            sim[ind_index][ins_index] = 1.0 - dist_value
-    for i in range(len(sim)):
-        sim[i][i] = 1.0
-
-    S = [np.sum(row) for row in sim]
-
-    for i in range(len(sim)):
-        sim[i] = [sim[i][j]/(S[i]*S[j])**0.5 for j in range(len(sim))]
-
-    L = np.identity(len(sim)) - sim
-    return L
-
+    file.write("Accuracy of the population: %f" % acc)
 
 if __name__ == '__main__':
     import sys
 
-    run = int(sys.argv[1])
+    run = 1 #int(sys.argv[1])
     random_seed = 1617 * run
+    normalize = int(sys.argv[1]) == 1
+    mutation_rate = float(sys.argv[2])/100
+    full_init = int(sys.argv[3]) == 1
+    dataset = sys.argv[4]
 
-    datasets = np.array(['SURFa-c', 'SURFa-d', 'SURFa-w', 'SURFc-a',
-                         'SURFc-d', 'SURFc-w', 'SURFd-a', 'SURFd-c',
-                         'SURFd-w', 'SURFw-a', 'SURFw-c', 'SURFw-d',
+    # datasets = np.array(['SURFa-c', 'SURFa-d', 'SURFa-w', 'SURFc-a',
+    #                      'SURFc-d', 'SURFc-w', 'SURFd-a', 'SURFd-c',
+    #                      'SURFd-w', 'SURFw-a', 'SURFw-c', 'SURFw-d',
                          # 'MNIST-USPS', 'USPS-MNIST', 'ICLEFc-i', 'ICLEFc-p',
                          # 'ICLEFi-c', 'ICLEFi-p', 'ICLEFp-c', 'ICLEFp-i'
-                         ])
+                         # ])
 
-    datasets = np.array([
-        'SURFa-c',
-                         'SURFc-d',
-                         'SURFd-w',
-        'SURFw-a',
-                        'ICLEFc-i','ICLEFi-c',
-                        'ICLEFc-p'])
+    # datasets = np.array(['OfficeHomeArt-Product'])
 
     # datasets = np.array([ 'SURFc-d', 'SURFd-w', 'SURFw-a'])
-    for dataset in datasets:
-        print('-------------------> %s <--------------------' %dataset)
-        dir = '/home/nguyenhoai2/Grid/data/TransferLearning/UnPairs/' + dataset
-        source = np.genfromtxt(dir + "/Source", delimiter=",")
-        m = source.shape[1] - 1
-        Xs = source[:, 0:m]
-        Ys = np.ravel(source[:, m:m + 1])
-        Ys = np.array([int(label) for label in Ys])
+    # for dataset in datasets:
+    #     print('-------------------> %s <--------------------' %dataset)
+    dir = '' #''/home/nguyenhoai2/Grid/data/TransferLearning/UnPairs/' + dataset
+    source = np.genfromtxt(dir + "Source", delimiter=",")
+    m = source.shape[1] - 1
+    Xs = source[:, 0:m]
+    Ys = np.ravel(source[:, m:m + 1])
+    Ys = np.array([int(label) for label in Ys])
 
-        target = np.genfromtxt(dir + "/Target", delimiter=",")
-        Xt = target[:, 0:m]
-        Yt = np.ravel(target[:, m:m + 1])
-        Yt = np.array([int(label) for label in Yt])
+    target = np.genfromtxt(dir + "Target", delimiter=",")
+    Xt = target[:, 0:m]
+    Yt = np.ravel(target[:, m:m + 1])
+    Yt = np.array([int(label) for label in Yt])
 
-        # Xs, Xt = Pre.normalize_data(Xs, Xt)
+    if normalize:
+        Xs, Xt = Pre.normalize_data(Xs, Xt)
 
-        C = len(np.unique(Ys))
-        if C > np.max(Ys):
-            Ys = Ys + 1
-            Yt = Yt + 1
+    C = len(np.unique(Ys))
+    if C > np.max(Ys):
+        Ys = Ys + 1
+        Yt = Yt + 1
 
-        np.random.seed(random_seed)
-        random.seed(random_seed)
+    np.random.seed(random_seed)
+    random.seed(random_seed)
 
-        knn = KNeighborsClassifier(n_neighbors=1)
-        knn.fit(Xs, Ys)
-        print('1NN accuracy: %f' %(np.mean(knn.predict(Xt)==Yt)))
+    file = open(dataset+".txt", "w")
 
-        file = open("test.txt", "w")
-        meda = MEDA.MEDA(kernel_type='rbf', dim=20, lamb=10, rho=1.0, eta=0.1, p=10, gamma=0.5, T=10, out=file)
-        acc, ypre, list_acc = meda.fit_predict(Xs, Ys, Xt, Yt)
-        print('MEDA accuracy: %f' % (acc))
+    file.write('----------------Setting------------------')
+    file.write('Normalize: '+ str(normalize))
+    file.write('Mutation rate: '+str(mutation_rate))
+    file.write('Fully opposite initialize: '+str(full_init))
+    file.write('----------------End setting------------------')
+    file.write('')
 
-        evolve(Xs, Ys, Xt, Yt)
+    knn = KNeighborsClassifier(n_neighbors=1)
+    knn.fit(Xs, Ys)
+    file.write('1NN accuracy: %f' %(np.mean(knn.predict(Xt)==Yt)))
+
+    meda = MEDA.MEDA(kernel_type='rbf', dim=20, lamb=10, rho=1.0, eta=0.1, p=10, gamma=0.5, T=10, out=None)
+    acc, ypre, list_acc = meda.fit_predict(Xs, Ys, Xt, Yt)
+    file.write('MEDA accuracy: %f' % (acc))
+
+    file.write('---------------GA-MEDA-----------------')
+    evolve(Xs, Ys, Xt, Yt, file, mutation_rate, full_init)

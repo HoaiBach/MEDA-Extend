@@ -71,6 +71,7 @@ class MEDA:
         self.out = out
 
     def estimate_mu(self, _X1, _Y1, _X2, _Y2):
+        return 0.5
         adist_m = proxy_a_distance(_X1, _X2)
         C = len(np.unique(_Y1))
         epsilon = 1e-3
