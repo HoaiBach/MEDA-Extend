@@ -163,3 +163,13 @@ def opposite_init(pop, min_pos, max_pos, full_init):
                     to_init2[index] = rand_value2
             else:
                 break
+
+
+def opposite_ind(ind, min_pos, max_pos):
+    opp_ind = []
+    for index, value in enumerate(ind):
+        rand_value = value
+        while rand_value == value:
+            rand_value = np.random.randint(min_pos, max_pos + 1)
+        opp_ind.append(rand_value)
+    return opp_ind
