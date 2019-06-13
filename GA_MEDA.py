@@ -17,6 +17,8 @@ from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 import Helpers
 import GFK
 import MEDA
+from shutil import copyfile
+import Directory as Dir
 
 
 # from scoop import futures
@@ -294,6 +296,23 @@ def beta_phase(ind):
     return beta
 
 
+def opposite_local(pop):
+    '''
+    Perform an opposite local search, where the new position which is opposite
+    to the current locations in pop are added to pop
+    :param pop: a current population
+    :return:
+    '''
+    to_add = []
+    for ind in pop:
+        opp_pos = Helpers.opposite_ind(ind, 1, C)
+        opp_ind = toolbox.ind()
+        for index, value in enumerate(opp_pos):
+            opp_ind[index] = value
+        to_add.append(opp_ind)
+    pop.extend(to_add)
+
+
 def evolve(Xsource, Ysource, Xtarget, Ytarget, file, mutation_rate, full_init):
     """
     Running GA algorithms, where each individual is a set of target pseudo labels.
@@ -336,7 +355,7 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget, file, mutation_rate, full_init):
     # parameters for GA
     N_BIT = nt
     N_GEN = 10
-    N_IND = 100
+    N_IND = 10
     MUTATION_RATE = 1.0/N_BIT*C
     MPB = mutation_rate
     CXPB = 1-mutation_rate
@@ -352,7 +371,7 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget, file, mutation_rate, full_init):
     # for evaluation
     toolbox.register("evaluate", fitness_evaluation)
     # for genetic operators
-    toolbox.register("select", tools.selTournament, tournsize=3)
+    toolbox.register("select", tools.selTournament, tournsize=2)
     toolbox.register("crossover", tools.cxUniform, indpb=0.5)
     toolbox.register("mutate", tools.mutUniformInt, low=pos_min, up=pos_max,
                      indpb=MUTATION_RATE)
@@ -391,7 +410,8 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget, file, mutation_rate, full_init):
     hof.update(pop)
 
     for g in range(N_GEN):
-        file.write("*****Iteration %d*****" % g)
+        print(g)
+        file.write("*****Iteration %d*****\n" % (g+1))
         # selection
         offspring = toolbox.select(pop, len(pop))
         offspring = map(toolbox.clone, offspring)
@@ -408,6 +428,8 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget, file, mutation_rate, full_init):
             if np.random.rand() < MPB:
                 toolbox.mutate(mutant)
                 del mutant.fitness.values
+
+        opposite_local(offspring)
 
         invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
         fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
@@ -427,47 +449,47 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget, file, mutation_rate, full_init):
         # The population is entirely replaced by the offspring
         pop[:] = tools.selBest(offspring + list(hof), len(pop))
         hof.update(pop)
-        file.write('Average distance: %f' %(Helpers.pop_distance(pop)))
-        file.write('Best fitness: %f' %(hof[0].fitness.values[0]))
+        file.write('Average distance: %f\n' %(Helpers.pop_distance(pop)))
+        file.write('Best fitness: %f\n' %(hof[0].fitness.values[0]))
 
         best_ind = tools.selBest(pop, 1)[0]
         acc = np.mean(best_ind == Yt)
-        file.write("Accuracy of the best individual: %f" % acc)
+        file.write("Accuracy of the best individual: %f\n" % acc)
 
-        top10 = tools.selBest(pop, 10)
+        no_10p = int(0.1*N_IND)
+        top10 = tools.selBest(pop, no_10p)
         vote_label = Helpers.voting(top10)
         acc = np.mean(vote_label == Yt)
-        file.write("Accuracy of the 10%% population: %f" % acc)
+        file.write("Accuracy of the 10%% population: %f\n" % acc)
 
         # Use the whole population
         vote_label = Helpers.voting(pop)
         acc = np.mean(vote_label == Yt)
-        file.write("Accuracy of the population: %f" % acc)
+        file.write("Accuracy of the population: %f\n" % acc)
 
-    file.write("*****Final result*****")
+    file.write("*****Final result*****\n")
     best_ind = tools.selBest(pop, 1)[0]
     acc = np.mean(best_ind == Yt)
-    file.write("Accuracy of the best individual: %f" % acc)
+    file.write("Accuracy of the best individual: %f\n" % acc)
 
     top10 = tools.selBest(pop, 10)
     vote_label = Helpers.voting(top10)
     acc = np.mean(vote_label == Yt)
-    file.write("Accuracy of the 10%% population: %f" % acc)
+    file.write("Accuracy of the 10%% population: %f\n" % acc)
 
     # Use the whole population
     vote_label = Helpers.voting(pop)
     acc = np.mean(vote_label == Yt)
-    file.write("Accuracy of the population: %f" % acc)
+    file.write("Accuracy of the population: %f\n" % acc)
 
 if __name__ == '__main__':
-    import sys
-
-    run = 1 #int(sys.argv[1])
+    import sys, time
+    run = int(sys.argv[1])
     random_seed = 1617 * run
-    normalize = int(sys.argv[1]) == 1
-    mutation_rate = float(sys.argv[2])/100
-    full_init = int(sys.argv[3]) == 1
-    dataset = sys.argv[4]
+    normalize = int(sys.argv[2]) == 1
+    mutation_rate = float(sys.argv[3])/100
+    full_init = int(sys.argv[4]) == 1
+    dataset = 'SURFd-w'#sys.argv[5]
 
     # datasets = np.array(['SURFa-c', 'SURFa-d', 'SURFa-w', 'SURFc-a',
     #                      'SURFc-d', 'SURFc-w', 'SURFd-a', 'SURFd-c',
@@ -481,14 +503,17 @@ if __name__ == '__main__':
     # datasets = np.array([ 'SURFc-d', 'SURFd-w', 'SURFw-a'])
     # for dataset in datasets:
     #     print('-------------------> %s <--------------------' %dataset)
-    dir = '' #''/home/nguyenhoai2/Grid/data/TransferLearning/UnPairs/' + dataset
-    source = np.genfromtxt(dir + "Source", delimiter=",")
+    dir = Dir.dir + dataset
+    copyfile(dir+'/Source', 'Source')
+    copyfile(dir+'/Target', 'Target')
+
+    source = np.genfromtxt("Source", delimiter=",")
     m = source.shape[1] - 1
     Xs = source[:, 0:m]
     Ys = np.ravel(source[:, m:m + 1])
     Ys = np.array([int(label) for label in Ys])
 
-    target = np.genfromtxt(dir + "Target", delimiter=",")
+    target = np.genfromtxt("Target", delimiter=",")
     Xt = target[:, 0:m]
     Yt = np.ravel(target[:, m:m + 1])
     Yt = np.array([int(label) for label in Yt])
@@ -500,26 +525,31 @@ if __name__ == '__main__':
     if C > np.max(Ys):
         Ys = Ys + 1
         Yt = Yt + 1
-
     np.random.seed(random_seed)
     random.seed(random_seed)
+    # selected_indices = np.random.randint(0, Yt.shape[0], len(Yt)/5)
+    # Xt = Xt[selected_indices]
+    # Yt = Yt[selected_indices]
 
     file = open(dataset+".txt", "w")
 
-    file.write('----------------Setting------------------')
-    file.write('Normalize: '+ str(normalize))
-    file.write('Mutation rate: '+str(mutation_rate))
-    file.write('Fully opposite initialize: '+str(full_init))
-    file.write('----------------End setting------------------')
-    file.write('')
+    file.write('----------------Setting------------------\n')
+    file.write('Normalize: '+ str(normalize)+'\n')
+    file.write('Mutation rate: '+str(mutation_rate)+'\n')
+    file.write('Fully opposite initialize: '+str(full_init)+'\n')
+    file.write('----------------End setting------------------'+'\n')
 
     knn = KNeighborsClassifier(n_neighbors=1)
     knn.fit(Xs, Ys)
-    file.write('1NN accuracy: %f' %(np.mean(knn.predict(Xt)==Yt)))
+    file.write('1NN accuracy: %f' %(np.mean(knn.predict(Xt)==Yt))+'\n')
 
     meda = MEDA.MEDA(kernel_type='rbf', dim=20, lamb=10, rho=1.0, eta=0.1, p=10, gamma=0.5, T=10, out=None)
     acc, ypre, list_acc = meda.fit_predict(Xs, Ys, Xt, Yt)
-    file.write('MEDA accuracy: %f' % (acc))
+    file.write('MEDA accuracy: %f' % (acc)+'\n')
 
-    file.write('---------------GA-MEDA-----------------')
+    file.write('---------------GA-MEDA-----------------'+'\n')
+    start = time.time()
     evolve(Xs, Ys, Xt, Yt, file, mutation_rate, full_init)
+    end = time.time()
+    exe_time = end - start
+    print(exe_time)
