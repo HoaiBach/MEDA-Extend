@@ -17,8 +17,9 @@ from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 import Helpers
 import GFK
 import MEDA
-from shutil import copyfile
-import Directory as Dir
+import sys, time
+#from shutil import copyfile
+#import Directory as Dir
 
 
 # from scoop import futures
@@ -70,7 +71,6 @@ def proxy_a_distance(source_X, target_X):
 
 
 kernel_type = 'rbf'
-dim = 20
 lamb = 10
 rho = 1.0
 eta = 0.1
@@ -128,27 +128,28 @@ def fitness_evaluation(Yt_pseu):
     F = np.zeros((ns+nt, C))
     for index, l in enumerate(Y):
         F[index][l-1] = 1
-    mu = estimate_mu(Xs, Ys, Xt, Yt_pseu)
-    # have to update the matrix M
-    N = 0
-    for c in range(1, C + 1):
-        e = np.zeros((ns + nt, 1))
-        tt = Ys == c
-        e[np.where(tt == True)] = 1.0 / len(Ys[np.where(Ys == c)])
-        yy = Yt_pseu == c
-        ind = np.where(yy == True)
-        inds = [item + ns for item in ind]
-        if len(Yt_pseu[np.where(Yt_pseu == c)]) == 0:
-            e[tuple(inds)] = 0.0
-        else:
-            e[tuple(inds)] = -1.0 / len(Yt_pseu[np.where(Yt_pseu == c)])
-        e[np.isinf(e)] = 0
-        N += np.dot(e, e.T)
-    M = (1 - mu) * M0 + mu * N
+    # mu = estimate_mu(Xs, Ys, Xt, Yt_pseu)
+    # # have to update the matrix M
+    # N = 0
+    # for c in range(1, C + 1):
+    #     e = np.zeros((ns + nt, 1))
+    #     tt = Ys == c
+    #     e[np.where(tt == True)] = 1.0 / len(Ys[np.where(Ys == c)])
+    #     yy = Yt_pseu == c
+    #     ind = np.where(yy == True)
+    #     inds = [item + ns for item in ind]
+    #     if len(Yt_pseu[np.where(Yt_pseu == c)]) == 0:
+    #         e[tuple(inds)] = 0.0
+    #     else:
+    #         e[tuple(inds)] = -1.0 / len(Yt_pseu[np.where(Yt_pseu == c)])
+    #     e[np.isinf(e)] = 0
+    #     N += np.dot(e, e.T)
+    # M = (1 - mu) * M0 + mu * N
+    # test1 = np.linalg.multi_dot([F.T, M0, F]).trace()
+    test2 = np.linalg.multi_dot([F.T, L, F]).trace()
+    # fitness = np.linalg.multi_dot([F.T, lamb * M + rho * L, F]).trace()
 
-    fitness = np.linalg.multi_dot([F.T, lamb * M + rho * L, F]).trace()
-
-    return fitness
+    return test2
 
 
 def beta_predict(beta):
@@ -217,7 +218,7 @@ def label_evolve(ind):
     M = (1 - mu) * M0 + mu * N
 
     M /= np.linalg.norm(M, 'fro')
-    left = np.dot(A + lamb * M + rho * L, K) \
+    left = np.dot(A + lamb * M, K) \
            + eta * np.eye(ns + nt, ns + nt)
     beta = np.dot(np.linalg.inv(left), np.dot(A, YY))
 
@@ -313,12 +314,14 @@ def opposite_local(pop):
     pop.extend(to_add)
 
 
-def evolve(Xsource, Ysource, Xtarget, Ytarget, file, mutation_rate, full_init):
+def evolve(Xsource, Ysource, Xtarget, Ytarget, file, mutation_rate, full_init, dim=20):
     """
     Running GA algorithms, where each individual is a set of target pseudo labels.
     :return: the best solution of GAs.
     """
-    global ns, nt, C, Xs, Ys, Xt, Yt, YY, K, A, e, M0, L, archive
+    exe_time = 0
+    start = time.time()
+    global ns, nt, C, Xs, Ys, Xt, Yt, YY, K, A, e, M0, L
     archive = []
     Xs = Xsource
     Ys = Ysource
@@ -354,8 +357,6 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget, file, mutation_rate, full_init):
 
     # parameters for GA
     N_BIT = nt
-    N_GEN = 10
-    N_IND = 10
     MUTATION_RATE = 1.0/N_BIT*C
     MPB = mutation_rate
     CXPB = 1-mutation_rate
@@ -408,10 +409,11 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget, file, mutation_rate, full_init):
 
     hof = tools.HallOfFame(maxsize=1)
     hof.update(pop)
+    exe_time = exe_time + time.time()-start
 
     for g in range(N_GEN):
-        print(g)
         file.write("*****Iteration %d*****\n" % (g+1))
+        start = time.time()
         # selection
         offspring = toolbox.select(pop, len(pop))
         offspring = map(toolbox.clone, offspring)
@@ -429,7 +431,7 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget, file, mutation_rate, full_init):
                 toolbox.mutate(mutant)
                 del mutant.fitness.values
 
-        opposite_local(offspring)
+        # opposite_local(offspring)
 
         invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
         fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
@@ -447,6 +449,8 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget, file, mutation_rate, full_init):
         offspring.append(new_ind)
 
         # The population is entirely replaced by the offspring
+        archive.append(tools.selBest(offspring, 1)[0])
+        exe_time = exe_time + time.time() - start
         pop[:] = tools.selBest(offspring + list(hof), len(pop))
         hof.update(pop)
         file.write('Average distance: %f\n' %(Helpers.pop_distance(pop)))
@@ -472,6 +476,10 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget, file, mutation_rate, full_init):
     acc = np.mean(best_ind == Yt)
     file.write("Accuracy of the best individual: %f\n" % acc)
 
+    best_evolve = label_evolve(best_ind)
+    acc = np.mean(best_evolve == Yt)
+    file.write("Accuracy of the evovled best individual: %f\n" % acc)
+
     top10 = tools.selBest(pop, 10)
     vote_label = Helpers.voting(top10)
     acc = np.mean(vote_label == Yt)
@@ -482,30 +490,42 @@ def evolve(Xsource, Ysource, Xtarget, Ytarget, file, mutation_rate, full_init):
     acc = np.mean(vote_label == Yt)
     file.write("Accuracy of the population: %f\n" % acc)
 
+    # Use the archive
+    vote_label = Helpers.voting(archive)
+    acc = np.mean(vote_label == Yt)
+    file.write("Accuracy of the archive: %f\n" % acc)
+
+    file.write('GA-MEDA time: %f' % (exe_time)+'\n')
+
+
+N_GEN = 10
+N_IND = 50
+
 if __name__ == '__main__':
-    import sys, time
     run = int(sys.argv[1])
     random_seed = 1617 * run
     normalize = int(sys.argv[2]) == 1
     mutation_rate = float(sys.argv[3])/100
     full_init = int(sys.argv[4]) == 1
-    dataset = 'SURFd-w'#sys.argv[5]
+    dim = int(sys.argv[5])
 
     # datasets = np.array(['SURFa-c', 'SURFa-d', 'SURFa-w', 'SURFc-a',
     #                      'SURFc-d', 'SURFc-w', 'SURFd-a', 'SURFd-c',
-    #                      'SURFd-w', 'SURFw-a', 'SURFw-c', 'SURFw-d',
-                         # 'MNIST-USPS', 'USPS-MNIST', 'ICLEFc-i', 'ICLEFc-p',
-                         # 'ICLEFi-c', 'ICLEFi-p', 'ICLEFp-c', 'ICLEFp-i'
-                         # ])
+    #                      'SURFd-w', 'SURFw-a', 'SURFw-c', 'SURFw-d'])
+    # datasets = np.array(['SURFc-a', 'SURFa-w', 'SURFw-d', 'ICLEFc-i', 'ICLEFi-p','ICLEFp-c'])
 
-    # datasets = np.array(['OfficeHomeArt-Product'])
+    # datasets = np.array(['ICLEFc-i', 'ICLEFc-p',
+    #                      'ICLEFi-c', 'ICLEFi-p', 'ICLEFp-c', 'ICLEFp-i',
+    #                     'MNIST-USPS', 'USPS-MNIST'
+    #                      ])
+
 
     # datasets = np.array([ 'SURFc-d', 'SURFd-w', 'SURFw-a'])
     # for dataset in datasets:
     #     print('-------------------> %s <--------------------' %dataset)
-    dir = Dir.dir + dataset
-    copyfile(dir+'/Source', 'Source')
-    copyfile(dir+'/Target', 'Target')
+    #     dir = Dir.dir + dataset
+    #     copyfile(dir+'/Source', 'Source')
+    #     copyfile(dir+'/Target', 'Target')
 
     source = np.genfromtxt("Source", delimiter=",")
     m = source.shape[1] - 1
@@ -531,25 +551,28 @@ if __name__ == '__main__':
     # Xt = Xt[selected_indices]
     # Yt = Yt[selected_indices]
 
-    file = open(dataset+".txt", "w")
+    file = open(str(run)+".txt", "w")
 
     file.write('----------------Setting------------------\n')
+    file.write('Pop size: '+str(N_IND)+'\n')
+    file.write('Max iterations: '+str(N_GEN)+'\n')
     file.write('Normalize: '+ str(normalize)+'\n')
     file.write('Mutation rate: '+str(mutation_rate)+'\n')
     file.write('Fully opposite initialize: '+str(full_init)+'\n')
+    file.write('GFK dim: '+str(dim)+'\n')
     file.write('----------------End setting------------------'+'\n')
 
     knn = KNeighborsClassifier(n_neighbors=1)
     knn.fit(Xs, Ys)
     file.write('1NN accuracy: %f' %(np.mean(knn.predict(Xt)==Yt))+'\n')
 
-    meda = MEDA.MEDA(kernel_type='rbf', dim=20, lamb=10, rho=1.0, eta=0.1, p=10, gamma=0.5, T=10, out=None)
-    acc, ypre, list_acc = meda.fit_predict(Xs, Ys, Xt, Yt)
-    file.write('MEDA accuracy: %f' % (acc)+'\n')
-
-    file.write('---------------GA-MEDA-----------------'+'\n')
     start = time.time()
-    evolve(Xs, Ys, Xt, Yt, file, mutation_rate, full_init)
+    meda = MEDA.MEDA(kernel_type='rbf', dim=dim, lamb=10, rho=1.0, eta=0.1, p=10, gamma=0.5, T=10, out=None)
+    acc, ypre, list_acc = meda.fit_predict(Xs, Ys, Xt, Yt)
     end = time.time()
     exe_time = end - start
-    print(exe_time)
+    file.write('MEDA accuracy: %f' % (acc)+'\n')
+    file.write('MEDA time: %f' % (exe_time)+'\n')
+
+    file.write('---------------GA-MEDA-----------------'+'\n')
+    evolve(Xs, Ys, Xt, Yt, file, mutation_rate, full_init, dim=dim)
