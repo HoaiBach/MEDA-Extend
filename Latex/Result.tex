@@ -1,0 +1,227 @@
+\documentclass[a4paper]{article}
+\usepackage{booktabs}
+
+\begin{document}
+	\begin{tabular}{lrrrrrrr}
+		\toprule
+		Datasets &    1NN &   MEDA &   Best &  Evolve &    10p &    Pop &  Archive \\
+		\midrule
+		SURFd-w &  63.39 &  87.46 &  87.46 &   87.46 &  85.39 &  73.74 &    87.80 \\
+		SURFa-c &  26.00 &  44.52 &  45.11 &   45.06 &  44.53 &  39.09 &    45.06 \\
+		SURFa-d &  25.48 &  45.86 &  44.99 &   45.86 &  44.82 &  40.59 &    45.86 \\
+		SURFa-w &  29.83 &  53.22 &  46.69 &   48.14 &  44.81 &  41.05 &    47.80 \\
+		SURFc-a &  23.70 &  56.58 &  56.02 &   56.58 &  53.86 &  50.25 &    56.68 \\
+		SURFc-d &  25.48 &  50.32 &  50.20 &   50.32 &  48.93 &  43.20 &    50.32 \\
+		SURFc-w &  25.76 &  53.90 &  53.04 &   53.90 &  51.80 &  46.59 &    53.90 \\
+		SURFd-a &  28.50 &  40.19 &  41.26 &   41.65 &  40.47 &  38.36 &    41.54 \\
+		SURFd-c &  26.27 &  34.73 &  34.85 &   34.91 &  34.22 &  31.34 &    34.91 \\
+		SURFw-a &  22.96 &  42.80 &  41.85 &   42.38 &  41.25 &  38.78 &    42.17 \\
+		SURFw-c &  19.86 &  33.66 &  33.62 &   33.75 &  33.47 &  30.26 &    33.30 \\
+		SURFw-d &  59.24 &  89.17 &  86.16 &   85.99 &  86.10 &  79.10 &    85.99 \\
+		\bottomrule
+	\end{tabular}
+	
+	\begin{tabular}{lrr}
+		\toprule
+		Datasets &   MEDA &  GA-MEDA \\
+		\midrule
+		SURFd-w &   2.96 &     2.91 \\
+		SURFa-c &  14.10 &    16.89 \\
+		SURFa-d &   4.61 &     5.33 \\
+		SURFa-w &   5.62 &     6.53 \\
+		SURFc-a &  14.27 &    17.02 \\
+		SURFc-d &   5.53 &     6.40 \\
+		SURFc-w &   6.56 &     7.82 \\
+		SURFd-a &   4.74 &     5.76 \\
+		SURFd-c &   5.61 &     6.95 \\
+		SURFw-a &   5.40 &     6.64 \\
+		SURFw-c &   4.35 &     4.76 \\
+		SURFw-d &   2.62 &     2.77 \\
+		\bottomrule
+	\end{tabular}
+	
+	\begin{tabular}{lrrrrrrr}
+		\toprule
+		Datasets &    1NN &    MEDA &   Best &  Evolve &    10p &    Pop &  Archive \\
+		\midrule
+		DECAF6d-w &  91.53 &  100.00 &  99.94 &  100.00 &  97.32 &  78.95 &   100.00 \\
+		DECAF6a-c &  71.68 &   87.36 &  87.10 &   87.18 &  85.47 &  77.49 &    87.27 \\
+		DECAF6a-d &  73.89 &   85.99 &  88.59 &   88.54 &  87.43 &  80.20 &    89.17 \\
+		DECAF6a-w &  68.14 &   85.76 &  84.65 &   87.12 &  80.49 &  67.52 &    86.78 \\
+		DECAF6c-a &  87.27 &   92.17 &  92.05 &   91.96 &  91.23 &  87.74 &    92.07 \\
+		DECAF6c-d &  79.62 &   85.99 &  85.87 &   85.99 &  85.47 &  79.62 &    85.99 \\
+		DECAF6c-w &  72.54 &   89.15 &  88.04 &   90.17 &  83.30 &  72.08 &    89.15 \\
+		DECAF6d-a &  49.90 &   93.01 &  93.19 &   93.01 &  91.54 &  86.49 &    93.11 \\
+		DECAF6d-c &  42.03 &   88.07 &  87.62 &   87.80 &  86.64 &  69.33 &    87.80 \\
+		DECAF6w-a &  62.53 &   92.48 &  92.48 &   92.59 &  90.29 &  84.04 &    92.59 \\
+		DECAF6w-c &  55.30 &   88.60 &  88.53 &   88.69 &  85.79 &  77.57 &    88.87 \\
+		DECAF6w-d &  98.09 &  100.00 &  99.94 &  100.00 &  99.77 &  92.18 &   100.00 \\
+		\bottomrule
+	\end{tabular}
+	
+	\begin{tabular}{lrr}
+		\toprule
+		Datasets &    MEDA &  GA-MEDA \\
+		\midrule
+		DECAF6d-w &  205.96 &   206.69 \\
+		DECAF6a-c &  114.85 &   116.65 \\
+		DECAF6a-d &  464.03 &   468.27 \\
+		DECAF6a-w &  380.17 &   367.09 \\
+		DECAF6c-a &  194.20 &   196.39 \\
+		DECAF6c-d &  107.09 &   107.74 \\
+		DECAF6c-w &  106.58 &   108.69 \\
+		DECAF6d-a &  518.06 &   519.22 \\
+		DECAF6d-c &  179.33 &   180.77 \\
+		DECAF6w-a &  204.59 &   204.86 \\
+		DECAF6w-c &  107.13 &   107.92 \\
+		DECAF6w-d &  209.44 &   209.66 \\
+		\bottomrule
+	\end{tabular}
+	
+	\begin{tabular}{lrrrrrrr}
+		\toprule
+		Datasets &    1NN &   MEDA &   Best &  Evolve &    10p &    Pop &  Archive \\
+		\midrule
+		ICLEFc-i &  83.50 &  92.67 &  92.48 &   92.50 &  92.12 &  87.80 &    92.50 \\
+		ICLEFc-p &  71.33 &  78.67 &  78.35 &   78.33 &  77.85 &  75.05 &    78.50 \\
+		ICLEFi-c &  89.00 &  95.83 &  95.58 &   95.67 &  95.32 &  92.18 &    95.50 \\
+		ICLEFi-p &  74.83 &  80.50 &  80.52 &   80.50 &  80.26 &  77.53 &    80.50 \\
+		ICLEFp-c &  76.17 &  95.67 &  95.74 &   95.83 &  94.58 &  87.98 &    96.00 \\
+		ICLEFp-i &  74.00 &  91.50 &  91.59 &   91.50 &  90.33 &  85.48 &    91.67 \\
+		\bottomrule
+	\end{tabular}
+	
+	\begin{tabular}{lrr}
+		\toprule
+		Datasets &   MEDA &  GA-MEDA \\
+		\midrule
+		ICLEFc-i &  32.11 &    33.11 \\
+		ICLEFc-p &  31.64 &    32.58 \\
+		ICLEFi-c &  18.26 &    19.12 \\
+		ICLEFi-p &  18.28 &    19.17 \\
+		ICLEFp-c &  32.48 &    33.49 \\
+		ICLEFp-i &  18.60 &    19.30 \\
+		\bottomrule
+	\end{tabular}
+	
+	\begin{tabular}{lrrrrrrr}
+		\toprule
+		Datasets &    1NN &   MEDA &   Best &  Evolve &    10p &    Pop &  Archive \\
+		\midrule
+		Office31amazon-dslr &  79.12 &  85.94 &  85.78 &   85.94 &  84.47 &  75.79 &    85.94 \\
+		Office31amazon-webcam &  75.85 &  85.91 &  85.53 &   85.91 &  84.56 &  77.88 &    85.91 \\
+		Office31dslr-amazon &  60.17 &  72.38 &  72.34 &   72.49 &  71.66 &  64.04 &    72.60 \\
+		Office31dslr-webcam &  95.97 &  96.98 &  96.52 &   96.60 &  96.52 &  87.91 &    96.60 \\
+		Office31webcam-amazon &  59.92 &  73.27 &  72.38 &   73.27 &  71.56 &  63.88 &    72.99 \\
+		Office31webcam-dslr &  99.40 &  99.40 &  98.96 &   99.00 &  98.28 &  87.90 &    99.00 \\
+		\bottomrule
+	\end{tabular}
+	
+	\begin{tabular}{lrr}
+		\toprule
+		Datasets &   MEDA &  GA-MEDA \\
+		\midrule
+		Office31amazon-dslr &  84.05 &    90.46 \\
+		Office31amazon-webcam &  56.91 &    61.42 \\
+		Office31dslr-amazon &  85.59 &   393.04 \\
+		Office31dslr-webcam &  19.20 &    20.76 \\
+		Office31webcam-amazon &  57.27 &    61.86 \\
+		Office31webcam-dslr &  19.10 &    20.84 \\
+		\bottomrule
+	\end{tabular}
+	
+	\begin{tabular}{lrrrrrrr}
+		\toprule
+		Datasets &    1NN &   MEDA &   Best &  Evolve &    10p &    Pop &  Archive \\
+		\midrule
+		OfficeHomeArt-Clipart &  45.29 &  54.23 &  53.73 &   53.91 &  52.44 &  44.76 &    53.65 \\
+		OfficeHomeArt-Product &  60.15 &  74.27 &  74.40 &   74.45 &  73.50 &  69.14 &    74.59 \\
+		OfficeHomeArt-RealWorld &  65.83 &  76.64 &  76.56 &   76.68 &  75.97 &  69.76 &    76.59 \\
+		OfficeHomeClipart-Art &  45.65 &  56.41 &  56.05 &   57.07 &  54.42 &  43.23 &    57.03 \\
+		OfficeHomeClipart-RealWorld &  58.85 &  71.01 &  71.15 &   71.33 &  70.22 &  60.09 &    71.36 \\
+		OfficeHomeProduct-Art &  48.08 &  58.10 &  57.86 &   58.84 &  56.20 &  44.85 &    58.55 \\
+		OfficeHomeProduct-Clipart &  42.86 &  51.20 &  51.75 &   51.87 &  51.07 &  48.38 &    51.91 \\
+		OfficeHomeProduct-RealWorld &  68.95 &  77.92 &  78.10 &   78.36 &  77.36 &  67.37 &    78.29 \\
+		OfficeHomeRealWorld-Art &  60.77 &  67.49 &  67.06 &   67.66 &  65.61 &  50.49 &    67.53 \\
+		OfficeHomeRealWorld-Clipart &  48.34 &  56.68 &  56.58 &   56.98 &  55.51 &  50.75 &    56.40 \\
+		\bottomrule
+	\end{tabular}
+	
+	\begin{tabular}{lrr}
+		\toprule
+		Datasets &    MEDA &  GA-MEDA \\
+		\midrule
+		OfficeHomeArt-Clipart &  362.85 &   393.92 \\
+		OfficeHomeArt-Product &  685.95 &   717.92 \\
+		OfficeHomeArt-RealWorld &  233.57 &   249.92 \\
+		OfficeHomeClipart-Art &  236.61 &   251.31 \\
+		OfficeHomeClipart-RealWorld &  523.08 &   561.51 \\
+		OfficeHomeProduct-Art &  690.73 &   725.15 \\
+		OfficeHomeProduct-Clipart &  411.05 &   437.37 \\
+		OfficeHomeProduct-RealWorld &  407.35 &   432.13 \\
+		OfficeHomeRealWorld-Art &  378.51 &   408.52 \\
+		OfficeHomeRealWorld-Clipart &  606.82 &   656.75 \\
+		\bottomrule
+	\end{tabular}
+	
+	\begin{tabular}{lrrrrrrr}
+		\toprule
+		Datasets &    1NN &   MEDA &   Best &  Evolve &    10p &    Pop &  Archive \\
+		\midrule
+		AMZbooks-dvd &  55.33 &  68.58 &  67.88 &   68.13 &  66.90 &  64.00 &    68.63 \\
+		AMZbooks-elec &  58.56 &  70.87 &  69.96 &   70.87 &  68.88 &  65.12 &    70.87 \\
+		AMZbooks-kitchen &  56.08 &  73.19 &  72.00 &   73.44 &  70.18 &  65.94 &    73.19 \\
+		AMZdvd-books &  56.50 &  62.45 &  63.72 &   64.85 &  62.87 &  60.80 &    64.25 \\
+		AMZdvd-elec &  58.21 &  71.97 &  71.72 &   72.22 &  69.36 &  67.18 &    72.12 \\
+		AMZdvd-kitchen &  56.68 &  73.59 &  71.92 &   73.54 &  69.91 &  66.03 &    72.64 \\
+		AMZelec-books &  55.40 &  67.05 &  65.26 &   66.50 &  64.43 &  62.00 &    65.95 \\
+		AMZelec-dvd &  56.13 &  66.68 &  66.01 &   66.83 &  64.93 &  63.08 &    66.93 \\
+		AMZelec-kitchen &  65.13 &  79.34 &  78.97 &   79.54 &  77.53 &  73.19 &    79.49 \\
+		AMZkitchen-books &  56.45 &  65.60 &  64.87 &   65.60 &  63.90 &  61.60 &    65.50 \\
+		AMZkitchen-dvd &  59.53 &  66.13 &  65.26 &   66.18 &  64.36 &  61.76 &    65.28 \\
+		AMZkitchen-elec &  64.51 &  75.43 &  75.23 &   75.53 &  74.10 &  69.46 &    75.38 \\
+		\bottomrule
+	\end{tabular}
+	
+	\begin{tabular}{lrr}
+		\toprule
+		Datasets &   MEDA &  GA-MEDA \\
+		\midrule
+		AMZbooks-dvd &  34.88 &    40.95 \\
+		AMZbooks-elec &  38.07 &    43.72 \\
+		AMZbooks-kitchen &  34.62 &    40.70 \\
+		AMZdvd-books &  37.79 &    43.68 \\
+		AMZdvd-elec &  34.59 &    40.77 \\
+		AMZdvd-kitchen &  37.75 &    43.54 \\
+		AMZelec-books &  26.19 &    29.67 \\
+		AMZelec-dvd &  39.35 &    46.77 \\
+		AMZelec-kitchen &  25.90 &    29.65 \\
+		AMZkitchen-books &  26.34 &    29.84 \\
+		AMZkitchen-dvd &  26.02 &    29.71 \\
+		AMZkitchen-elec &  39.01 &    46.97 \\
+		\bottomrule
+	\end{tabular}
+	
+	\begin{tabular}{lrrrrrrr}
+		\toprule
+		Datasets &    1NN &   MEDA &   Best &  Evolve &    10p &    Pop &  Archive \\
+		\midrule
+		VOC2007-ImageNet &  38.18 &  77.47 &  78.30 &   77.59 &  77.83 &  71.26 &    78.35 \\
+		ImageNet-VOC2007 &  50.77 &  63.03 &  63.48 &   63.36 &  63.29 &  58.30 &    63.45 \\
+		\bottomrule
+	\end{tabular}
+	
+	\begin{tabular}{lrr}
+		\toprule
+		Datasets &    MEDA &  GA-MEDA \\
+		\midrule
+		VOC2007-ImageNet &  555.31 &   578.59 \\
+		ImageNet-VOC2007 &  560.96 &   583.21 \\
+		\bottomrule
+	\end{tabular}
+	
+	
+	Process finished with exit code 0
+	
+
+\end{document}

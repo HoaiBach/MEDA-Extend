@@ -1,0 +1,107 @@
+This is pdfTeX, Version 3.14159265-2.6-1.40.19 (Web2C 2018) (preloaded format=pdflatex 2019.1.29)  18 JUN 2019 19:18
+entering extended mode
+ restricted \write18 enabled.
+ %&-line parsing enabled.
+**Result.tex
+(./Result.tex
+LaTeX2e <2018-12-01>
+(/usr/pkg/share/texmf-dist/tex/latex/base/article.cls
+Document Class: article 2018/09/03 v1.4i Standard LaTeX document class
+(/usr/pkg/share/texmf-dist/tex/latex/base/size10.clo
+File: size10.clo 2018/09/03 v1.4i Standard LaTeX file (size option)
+)
+\c@part=\count80
+\c@section=\count81
+\c@subsection=\count82
+\c@subsubsection=\count83
+\c@paragraph=\count84
+\c@subparagraph=\count85
+\c@figure=\count86
+\c@table=\count87
+\abovecaptionskip=\skip41
+\belowcaptionskip=\skip42
+\bibindent=\dimen102
+)
+(/usr/pkg/share/texmf-dist/tex/latex/booktabs/booktabs.sty
+Package: booktabs 2016/04/27 v1.618033 publication quality tables
+\heavyrulewidth=\dimen103
+\lightrulewidth=\dimen104
+\cmidrulewidth=\dimen105
+\belowrulesep=\dimen106
+\belowbottomsep=\dimen107
+\aboverulesep=\dimen108
+\abovetopsep=\dimen109
+\cmidrulesep=\dimen110
+\cmidrulekern=\dimen111
+\defaultaddspace=\dimen112
+\@cmidla=\count88
+\@cmidlb=\count89
+\@aboverulesep=\dimen113
+\@belowrulesep=\dimen114
+\@thisruleclass=\count90
+\@lastruleclass=\count91
+\@thisrulewidth=\dimen115
+) (./Result.aux)
+\openout1 = `Result.aux'.
+
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 4.
+LaTeX Font Info:    ... okay on input line 4.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 4.
+LaTeX Font Info:    ... okay on input line 4.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 4.
+LaTeX Font Info:    ... okay on input line 4.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 4.
+LaTeX Font Info:    ... okay on input line 4.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 4.
+LaTeX Font Info:    ... okay on input line 4.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 4.
+LaTeX Font Info:    ... okay on input line 4.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <7> on input line 5.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <5> on input line 5.
+
+Overfull \hbox (7.13957pt too wide) in paragraph at lines 43--61
+[][] 
+ []
+
+[1
+
+{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}]
+Overfull \hbox (57.0008pt too wide) in paragraph at lines 107--119
+[][] 
+ []
+
+
+Overfull \hbox (85.66751pt too wide) in paragraph at lines 133--149
+[][] 
+ []
+
+[2]
+Overfull \hbox (33.4452pt too wide) in paragraph at lines 167--185
+[][] 
+ []
+
+[3]
+Overfull \hbox (38.11186pt too wide) in paragraph at lines 205--213
+[][] 
+ []
+
+[4] (./Result.aux) ) 
+Here is how much of TeX's memory you used:
+ 265 strings out of 493171
+ 2928 string characters out of 6149774
+ 71999 words of memory out of 5000000
+ 4160 multiletter control sequences out of 15000+600000
+ 3640 words of font info for 14 fonts, out of 8000000 for 9000
+ 912 hyphenation exceptions out of 8191
+ 23i,6n,17p,135b,114s stack positions out of 5000i,500n,10000p,200000b,80000s
+</usr/pkg/share/texmf-dist/fonts/type1/public/amsfonts/cm/c
+mr10.pfb>
+Output written on Result.pdf (4 pages, 26915 bytes).
+PDF statistics:
+ 21 PDF objects out of 1000 (max. 8388607)
+ 13 compressed objects within 1 object stream
+ 0 named destinations out of 1000 (max. 500000)
+ 1 words of extra memory for PDF output out of 10000 (max. 10000000)
+
