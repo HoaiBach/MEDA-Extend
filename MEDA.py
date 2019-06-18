@@ -9,7 +9,6 @@ import scipy.io
 from sklearn import metrics
 from sklearn import svm, neighbors
 from sklearn.neighbors import KNeighborsClassifier
-import FitnessFunction
 import os
 
 import GFK
