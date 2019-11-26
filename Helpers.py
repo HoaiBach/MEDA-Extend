@@ -90,6 +90,29 @@ def laplacian_matrix(data, k):
     and the weights are measured by cosine)
     :return:
     """
+    # import matlab.engine as ME
+    # import matlab
+    # engine = ME.start_matlab()
+    # calling from matllab
+    # options = dict()
+    # options.update({'k' : 10})
+    # options.update({'NeighborMode' : 'KNN'})
+    #
+    # options.update({'Metric' : 'Cosine'})
+    # options.update({'WeightMode' : 'Cosine'})
+
+    # options.update({'Metric': 'Euclidean'})
+    # options.update({'WeightMode': 'HeatKernel'})
+    # options.update({'t' : 1.0})
+
+    # sim = np.array(engine.lapgraph(matlab.double(data.tolist()), options))
+    # S = [np.sum(row) for row in sim]
+    #
+    # for i in range(len(sim)):
+    #     sim[i] = [sim[i][j] / (S[i] * S[j]) ** 0.5 for j in range(len(sim))]
+    #
+    # L = np.identity(len(sim)) - sim
+    # return L
     nn = neighbors.NearestNeighbors(n_neighbors=k, algorithm='brute', metric='cosine')
     nn.fit(data)
     dist, nn = nn.kneighbors(return_distance=True)
@@ -126,7 +149,7 @@ def voting(set_labels):
 
     return vote_label
 
-def opposite_init(pop, min_pos, max_pos, full_init):
+def opposite_init(pop, min_pos, max_pos):
     '''
     Try to initialize the population by an oppositing position
     in this case, we assume that the first half of the pop has been
@@ -137,32 +160,32 @@ def opposite_init(pop, min_pos, max_pos, full_init):
     :return: none, changes are made inside pop
     '''
     # pop is initialized from 0 to init_upto
-    if full_init:
-        for ind_index in range(0, len(pop), max_pos):
-            if ind_index+max_pos < len(pop):
-                inited = pop[ind_index]
-                for pos_index, value in enumerate(inited):
-                    values = [other for other in range(min_pos, max_pos+1) if other != value]
-                    np.random.shuffle(values)
-                    for add_index in range(1, max_pos-1):
-                        pop[ind_index+add_index][pos_index] = values[add_index-1]
-    else:
-        for i in range(0, len(pop), 3):
-            if i+2 < len(pop):
-                inited = pop[i]
-                to_init1 = pop[i+1]
-                to_init2 = pop[i+2]
-                for index, value in enumerate(inited):
-                    rand_value1 = value
-                    while rand_value1 == value:
-                        rand_value1 = np.random.randint(min_pos, max_pos+1)
-                    to_init1[index] = rand_value1
-                    rand_value2 = value
-                    while rand_value2 == value or rand_value2 == rand_value1:
-                        rand_value2 = np.random.randint(min_pos, max_pos+1)
-                    to_init2[index] = rand_value2
-            else:
-                break
+    # if full_init:
+    for ind_index in range(0, len(pop), max_pos):
+        if ind_index+max_pos < len(pop):
+            inited = pop[ind_index]
+            for pos_index, value in enumerate(inited):
+                values = [other for other in range(min_pos, max_pos+1) if other != value]
+                np.random.shuffle(values)
+                for add_index in range(1, max_pos-1):
+                    pop[ind_index+add_index][pos_index] = values[add_index-1]
+    # else:
+    #     for i in range(0, len(pop), 3):
+    #         if i+2 < len(pop):
+    #             inited = pop[i]
+    #             to_init1 = pop[i+1]
+    #             to_init2 = pop[i+2]
+    #             for index, value in enumerate(inited):
+    #                 rand_value1 = value
+    #                 while rand_value1 == value:
+    #                     rand_value1 = np.random.randint(min_pos, max_pos+1)
+    #                 to_init1[index] = rand_value1
+    #                 rand_value2 = value
+    #                 while rand_value2 == value or rand_value2 == rand_value1:
+    #                     rand_value2 = np.random.randint(min_pos, max_pos+1)
+    #                 to_init2[index] = rand_value2
+    #         else:
+    #             break
 
 
 def opposite_ind(ind, min_pos, max_pos):

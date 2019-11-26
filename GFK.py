@@ -10,6 +10,8 @@ import bob.learn
 import bob.learn.linear
 import bob.math
 from sklearn.neighbors import KNeighborsClassifier
+import Helpers as Pre
+import os
 
 
 class GFK:
@@ -184,29 +186,93 @@ class GFK:
 
 
 if __name__ == '__main__':
-    datasets = np.array(['GasSensor1-4', 'GasSensor1-2', 'GasSensor1-3',
-                         'GasSensor1-5', 'GasSensor1-6', 'GasSensor1-7',
-                         'GasSensor1-8', 'GasSensor1-9', 'GasSensor1-10',
-                         'SURFa-c', 'SURFa-d', 'SURFa-w', 'SURFc-a',
-                         'SURFc-d', 'SURFc-w', 'SURFd-a', 'SURFd-c',
-                         'SURFd-w', 'SURFw-a', 'SURFw-c', 'SURFw-d',
-                         'MNIST-USPS', 'USPS-MNIST'])
-    for dataset in datasets:
-        source = np.genfromtxt("/home/nguyenhoai2/Grid/data/TransferLearning/UnPairs/" + dataset + "/Source",
-                               delimiter=",")
-        m = source.shape[1] - 1
-        Xs = source[:, 0:m]
-        Ys = np.ravel(source[:, m:m + 1])
-        Ys = np.array([int(label) for label in Ys])
+    # import sys, os
+    # random_seed = 1617 * 1
+    # np.random.seed(random_seed)
+    #
+    # dataset = sys.argv[1]
+    # dim = int(sys.argv[2])
+    # norm = int(sys.argv[3]) == 1
+    #
+    # source = np.genfromtxt("Source", delimiter=",")
+    # m = source.shape[1] - 1
+    # Xs = source[:, 0:m]
+    # Ys = np.ravel(source[:, m:m + 1])
+    # Ys = np.array([int(label) for label in Ys])
+    #
+    # target = np.genfromtxt("Target", delimiter=",")
+    # Xt = target[:, 0:m]
+    # Yt = np.ravel(target[:, m:m + 1])
+    # Yt = np.array([int(label) for label in Yt])
+    #
+    # if norm:
+    #     Xs, Xt = Pre.normalize_data(Xs, Xt)
+    #
+    # C = len(np.unique(Ys))
+    # if C > np.max(Ys):
+    #     Ys = Ys + 1
+    #     Yt = Yt + 1
+    #
+    # # Create target Directory if don't exist
+    # file = open((str(dim)+'.txt'), "w")
+    #
+    # gfk = GFK(dim=dim)
+    # acc, _, _ = gfk.fit_predict(Xs, Ys, Xt, Yt)
+    # file.write(str(acc))
+    #
+    # file.close()
 
-        target = np.genfromtxt("/home/nguyenhoai2/Grid/data/TransferLearning/UnPairs/" + dataset + "/Target",
-                               delimiter=",")
-        Xt = target[:, 0:m]
-        Yt = np.ravel(target[:, m:m + 1])
-        Yt = np.array([int(label) for label in Yt])
+    list_datasets = [
+        ['SURFa-c', 'SURFa-d', 'SURFa-w', 'SURFc-a', 'SURFc-d', 'SURFc-w', 'SURFd-a', 'SURFd-c', 'SURFd-w', 'SURFw-a',
+         'SURFw-c', 'SURFw-d'],
+        # ['DECAF6d-w','DECAF6a-c','DECAF6a-d','DECAF6a-w','DECAF6c-a','DECAF6c-d','DECAF6c-w','DECAF6d-a','DECAF6d-c','DECAF6w-a','DECAF6w-c','DECAF6w-d'],
+        # ['ICLEFc-i','ICLEFc-p','ICLEFi-c','ICLEFi-p','ICLEFp-c','ICLEFp-i'],
+        ['Office31amazon-dslr', 'Office31amazon-webcam', 'Office31dslr-amazon', 'Office31dslr-webcam',
+         'Office31webcam-amazon', 'Office31webcam-dslr'],
+        # ['OfficeHomeArt-Clipart','OfficeHomeArt-Product','OfficeHomeArt-RealWorld','OfficeHomeClipart-Art',
+        #  'OfficeHomeClipart-Product',
+        #         'OfficeHomeClipart-RealWorld', 'OfficeHomeProduct-Art','OfficeHomeProduct-Clipart','OfficeHomeProduct-RealWorld','OfficeHomeRealWorld-Art',
+        #         'OfficeHomeRealWorld-Clipart',
+        #  'OfficeHomeRealWorld-Product'
+        #  ],
+        ['AMZbooks-dvd', 'AMZbooks-elec', 'AMZbooks-kitchen', 'AMZdvd-books', 'AMZdvd-elec', 'AMZdvd-kitchen',
+         'AMZelec-books', 'AMZelec-dvd',
+         'AMZelec-kitchen', 'AMZkitchen-books', 'AMZkitchen-dvd', 'AMZkitchen-elec'],
+        # ['Caltech101-ImageNet', 'Caltech101-SUN09', 'ImageNet-Caltech101', 'ImageNet-SUN09', 'SUN09-ImageNet', 'SUN09-Caltech101']
+        # ['VOC2007-ImageNet', 'ImageNet-VOC2007']
+    ]
+    dims = [40, 30, 40]
+    normalizes = [0, 1, 0]
 
-        gfk = GFK(dim=20)
-        acc, ypred, G = gfk.fit_predict(Xs, Ys, Xt, Yt)
-        file = open("/home/nguyenhoai2/Grid/results/R-MEDA/" + dataset + "/GFK.txt", "w")
-        file.write(str(acc))
-        file.close()
+    for index, datasets in enumerate(list_datasets):
+        dim = dims[index]
+        normalize = normalizes[index]
+        for dataset in datasets:
+            print(dataset)
+            dir = '/home/nguyenhoai2/Grid/data/TransferLearning/UnPairs/' + dataset + '/'
+
+            source = np.genfromtxt(dir + 'Source', delimiter=',')
+            m = source.shape[1] - 1
+            Xs = source[:, 0:m]
+            Ys = np.ravel(source[:, m:m + 1])
+            Ys = np.array([int(label) for label in Ys])
+
+            target = np.genfromtxt(dir + 'Target', delimiter=',')
+            Xt = target[:, 0:m]
+            Yt = np.ravel(target[:, m:m + 1])
+            Yt = np.array([int(label) for label in Yt])
+
+            if normalize:
+                Xs, Xt = Pre.normalize_data(Xs, Xt)
+
+            C = len(np.unique(Ys))
+            if C > np.max(Ys):
+                Ys = Ys + 1
+                Yt = Yt + 1
+
+            gfk = GFK(dim=dim)
+            acc, _, _= gfk.fit_predict(Xs, Ys, Xt, Yt)
+
+            file = open('/home/nguyenhoai2/Grid/results/MEDA-Extend/' + dataset + '/GFK', 'w')
+            file.write(str(acc))
+            file.close()

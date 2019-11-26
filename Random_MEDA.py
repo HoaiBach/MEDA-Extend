@@ -18,6 +18,8 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 import GFK
 import time
+import Helpers as Pre
+import random
 import os
 
 
@@ -68,7 +70,7 @@ def proxy_a_distance(source_X, target_X):
 
 class Random_MEDA:
     def __init__(self, kernel_type='primal', dim=30, lamb=1, rho=1.0, eta=0.1, p=10, gamma=1.0,
-                 init_op=0, re_init_op=0, archive_size=2, random_rate=0.5, run=1):
+                 init_op=0, re_init_op=0, archive_size=2, random_rate=0.5, T=10, run=1):
         '''
         Init func
         :param kernel_type: kernel, values: 'primal' | 'linear' | 'rbf' | 'sam'
@@ -112,6 +114,7 @@ class Random_MEDA:
         np.random.seed(seed)
         self.archive_size = archive_size
         self.random_rate = random_rate
+        self.T = 10
 
     def evolve(self, Xs, Ys, Xt, Yt):
         self.Xs = Xs
@@ -150,7 +153,7 @@ class Random_MEDA:
         self.YY = np.vstack((self.YY, np.zeros((self.nt, self.C))))
 
         N = 10
-        GEN = 10
+        GEN = self.T
         pos_min = -10
         pos_max = 10
         pop = []
@@ -295,6 +298,8 @@ class Random_MEDA:
             label = np.argmax(counts)
             vote_label.append(label)
         acc = np.mean(vote_label == Yt)
+        label_to_return = vote_label
+        acc_to_return = acc
         toPrint += ("Accuracy archive:" + str(acc) + "\n")
 
         all_labels = []
@@ -330,6 +335,8 @@ class Random_MEDA:
 
         f_out.write(toPrint)
         f_out.close()
+
+        return label_to_return, acc_to_return
 
     def initialize_with_label(self, label):
         Yt_pseu = label
@@ -497,42 +504,34 @@ def laplacian_matrix(data, k):
 
 if __name__ == '__main__':
     run = int(sys.argv[1])
+    random_seed = 1617 * run
+    normalize = int(sys.argv[2]) == 1
+    dim = int(sys.argv[3])
     init_op = 2  # 0-random, 1- KNN (diff K), 2-10 diff classifiers
     re_init_op = 3  # 0-random, 1-using best, 2-label, 3- mixed random label
     archive_size = 10  # size of archive to be ok for using in creating new (using with label/mix label and random)
     random_rate = 0.5  # arg[4] can be 1,2,3,.., 10 -> 0.1, 0.2, 0.3,...,1.0
 
-    dataset = ''
-    dir = '/home/nguyenhoai2/Grid/data/TransferLearning/UnPairs/' + dataset
-
-    source = np.genfromtxt(dir+"/Source", delimiter=",")
+    source = np.genfromtxt("Source", delimiter=",")
     m = source.shape[1] - 1
     Xs = source[:, 0:m]
     Ys = np.ravel(source[:, m:m + 1])
     Ys = np.array([int(label) for label in Ys])
 
-    target = np.genfromtxt(dir+"/Target", delimiter=",")
+    target = np.genfromtxt("Target", delimiter=",")
     Xt = target[:, 0:m]
     Yt = np.ravel(target[:, m:m + 1])
     Yt = np.array([int(label) for label in Yt])
 
-    r_meda = Random_MEDA(kernel_type='rbf', dim=20, lamb=10, rho=1.0, eta=0.1, p=10, gamma=0.5,
-                         init_op=init_op, re_init_op=re_init_op,
-                         archive_size=archive_size, random_rate=random_rate,
-                         run=run)
-    r_meda.evolve(Xs, Ys, Xt, Yt)
+    if normalize:
+        Xs, Xt = Pre.normalize_data(Xs, Xt)
+    C = len(np.unique(Ys))
+    if C > np.max(Ys):
+        Ys = Ys + 1
+        Yt = Yt + 1
+    np.random.seed(random_seed)
+    random.seed(random_seed)
 
-    # source = np.genfromtxt("Source", delimiter=",")
-    # m = source.shape[1] - 1
-    # Xs = source[:, 0:m]
-    # Ys = np.ravel(source[:, m:m + 1])
-    # Ys = np.array([int(label) for label in Ys])
-    #
-    # target = np.genfromtxt("Target", delimiter=",")
-    # Xt = target[:, 0:m]
-    # Yt = np.ravel(target[:, m:m + 1])
-    # Yt = np.array([int(label) for label in Yt])
-    #
-    # r_meda = Random_MEDA(kernel_type='rbf', dim=20, lamb=10, rho=1.0, eta=0.1, p=10, gamma=0.5, T=10,
-    #                      init_op=init_op, re_init_op=re_init_op, run=run)
-    # r_meda.evolve(Xs, Ys, Xt, Yt)
+    r_meda = Random_MEDA(kernel_type='rbf', dim=dim, lamb=10, rho=1.0, eta=0.1, p=10, gamma=0.5, T=10,
+                         init_op=init_op, re_init_op=re_init_op, run=run, archive_size=10)
+    r_meda.evolve(Xs, Ys, Xt, Yt)
