@@ -241,6 +241,7 @@ if __name__ == '__main__':
         # ['Caltech101-ImageNet', 'Caltech101-SUN09', 'ImageNet-Caltech101', 'ImageNet-SUN09', 'SUN09-ImageNet', 'SUN09-Caltech101']
         # ['VOC2007-ImageNet', 'ImageNet-VOC2007']
     ]
+    list_datasets = [['SURFd-w']]
     dims = [40, 30, 40]
     normalizes = [0, 1, 0]
 
@@ -249,7 +250,7 @@ if __name__ == '__main__':
         normalize = normalizes[index]
         for dataset in datasets:
             print(dataset)
-            dir = '/home/nguyenhoai2/Grid/data/TransferLearning/UnPairs/' + dataset + '/'
+            dir = '/Volumes/Data/Work/Research/Current/Datasets/Transferlearning/UnPairs/' + dataset + '/'
 
             source = np.genfromtxt(dir + 'Source', delimiter=',')
             m = source.shape[1] - 1
@@ -271,8 +272,9 @@ if __name__ == '__main__':
                 Yt = Yt + 1
 
             gfk = GFK(dim=dim)
-            acc, _, _= gfk.fit_predict(Xs, Ys, Xt, Yt)
+            acc, _, _ = gfk.fit_predict(Xs, Ys, Xt, Yt)
 
-            file = open('/home/nguyenhoai2/Grid/results/MEDA-Extend/' + dataset + '/GFK', 'w')
+            # file = open('/home/nguyenhoai2/Grid/results/MEDA-Extend/' + dataset + '/GFK', 'w')
+            file = open('GFK', 'w')
             file.write(str(acc))
             file.close()
